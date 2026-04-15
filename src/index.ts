@@ -1,7 +1,7 @@
 import 'dotenv/config';
-import { generateText } from 'ai';
+import { streamText, type ModelMessage } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
-import { createMockModel } from './mock/mock-model';
+import { createInterface } from 'node:readline';
 
 const deepseek = createOpenAI({
   baseURL: 'https://api.deepseek.com',
@@ -13,32 +13,45 @@ const kimi = createOpenAI({
   apiKey: process.env.MOONSHOT_API_KEY,
 });
 
+const rl = createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
 
-function buildModelChain() {
-  const chain: any[] = [];
-  if (process.env.DEEPSEEK_API_KEY) chain.push(deepseek.chat('deepseek-reasoner'));
-  if (process.env.MOONSHOT_API_KEY) chain.push(kimi.chat('kimi-k2-thinking'));
-  chain.push(createMockModel());
-  return chain;
-}
+const messages: ModelMessage[] = [];
 
-async function main() {
-  const models = buildModelChain();
-  let lastError: unknown;
-  for (const model of models) {
-    try {
-      const { text } = await generateText({
-        model,
-        prompt: '用一句话介绍你自己',
-      });
-      console.log(text);
+function ask() {
+  rl.question('\nYou: ', async (input) => {
+    const trimmed = input.trim();
+    if (!trimmed || trimmed === 'exit') {
+      console.log('Bye!');
+      rl.close();
       return;
-    } catch (error) {
-      lastError = error;
-      console.error(`模型 ${model.modelId} 调用失败:`, error);
     }
-  }
-  throw lastError;
+
+    messages.push({ role: 'user', content: trimmed });
+
+    const result = streamText({
+      model: deepseek.chat('deepseek-reasoner'),
+      messages,
+      system: `你是 Super Agent，一个专注于软件开发的 AI 助手。
+你说话简洁直接，喜欢用代码示例来解释问题。
+如果用户的问题不够清晰，你会反问而不是瞎猜。`,
+    });
+
+    process.stdout.write('Assistant: ');
+    let fullResponse = '';
+    for await (const chunk of result.textStream) {
+      process.stdout.write(chunk);
+      fullResponse += chunk;
+    }
+    console.log(); // 换行
+
+    messages.push({ role: 'assistant', content: fullResponse });
+
+    ask();
+  });
 }
 
-main().catch(console.error);
+console.log('Super Agent v0.1 (type "exit" to quit)\n');
+ask();
