@@ -17,10 +17,19 @@ importers:
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
+      pnpm:
+        specifier: ^11.0.8
+        version: 11.0.8
+      turndown:
+        specifier: ^7.2.4
+        version: 7.2.4
     devDependencies:
       '@types/node':
         specifier: ^25.6.0
         version: 25.6.0
+      '@types/turndown':
+        specifier: ^5.0.6
+        version: 5.0.6
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -208,6 +217,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@mixmark-io/domino@2.2.0':
+    resolution: {integrity: sha512-Y28PR25bHXUg88kCV7nivXrP2Nj2RueZ3/l/jdx6J9f8J4nsEGcgX0Qe6lt7Pa+J79+kPiJU3LguR6O/6zrLOw==}
+
   '@opentelemetry/api@1.9.0':
     resolution: {integrity: sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg==}
     engines: {node: '>=8.0.0'}
@@ -217,6 +229,9 @@ packages:
 
   '@types/node@25.6.0':
     resolution: {integrity: sha512-+qIYRKdNYJwY3vRCZMdJbPLJAtGjQBudzZzdzwQYkEPQd+PJGixUL5QfvCLDaULoLv+RhT3LDkwEfKaAkgSmNQ==}
+
+  '@types/turndown@5.0.6':
+    resolution: {integrity: sha512-ru00MoyeeouE5BX4gRL+6m/BsDfbRayOskWqUvh7CLGW+UXxHQItqALa38kKnOiZPqJrtzJUgAC2+F0rL1S4Pg==}
 
   '@vercel/oidc@3.1.0':
     resolution: {integrity: sha512-Fw28YZpRnA3cAHHDlkt7xQHiJ0fcL+NRcIqsocZQUSmbzeIKRpwttJjik5ZGanXP+vlA4SbTg+AbA3bP363l+w==}
@@ -252,6 +267,11 @@ packages:
   json-schema@0.4.0:
     resolution: {integrity: sha512-es94M3nTIfsEPisRafak+HDLfHXnKBhV3vU5eqPcS3flIWqcxJWgXHXiey3YrpaNsanY5ei1VoYEbOzijuq9BA==}
 
+  pnpm@11.0.8:
+    resolution: {integrity: sha512-TECX4d0tQjcsTn+lp5H/KPx1pITHrBkuZLHfD97xdZS6mC+bT+2a37PHV4RvVlt5mydj+zcz0d4by4LPRmhJEg==}
+    engines: {node: '>=22.13'}
+    hasBin: true
+
   resolve-pkg-maps@1.0.0:
     resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
 
@@ -259,6 +279,10 @@ packages:
     resolution: {integrity: sha512-5C1sg4USs1lfG0GFb2RLXsdpXqBSEhAaA/0kPL01wxzpMqLILNxIxIOKiILz+cdg/pLnOUxFYOR5yhHU666wbw==}
     engines: {node: '>=18.0.0'}
     hasBin: true
+
+  turndown@7.2.4:
+    resolution: {integrity: sha512-I8yFsfRzmzK0WV1pNNOA4A7y4RDfFxPRxb3t+e3ui14qSGOxGtiSP6GjeX+Y6CHb7HYaFj7ECUD7VE5kQMZWGQ==}
+    engines: {node: '>=18', npm: '>=9'}
 
   typescript@6.0.2:
     resolution: {integrity: sha512-bGdAIrZ0wiGDo5l8c++HWtbaNCWTS4UTv7RaTH/ThVIgjkveJt83m74bBHMJkuCbslY8ixgLBVZJIOiQlQTjfQ==}
@@ -375,6 +399,8 @@ snapshots:
   '@esbuild/win32-x64@0.27.7':
     optional: true
 
+  '@mixmark-io/domino@2.2.0': {}
+
   '@opentelemetry/api@1.9.0': {}
 
   '@standard-schema/spec@1.1.0': {}
@@ -382,6 +408,8 @@ snapshots:
   '@types/node@25.6.0':
     dependencies:
       undici-types: 7.19.2
+
+  '@types/turndown@5.0.6': {}
 
   '@vercel/oidc@3.1.0': {}
 
@@ -435,6 +463,8 @@ snapshots:
 
   json-schema@0.4.0: {}
 
+  pnpm@11.0.8: {}
+
   resolve-pkg-maps@1.0.0: {}
 
   tsx@4.21.0:
@@ -443,6 +473,10 @@ snapshots:
       get-tsconfig: 4.14.0
     optionalDependencies:
       fsevents: 2.3.3
+
+  turndown@7.2.4:
+    dependencies:
+      '@mixmark-io/domino': 2.2.0
 
   typescript@6.0.2: {}
 

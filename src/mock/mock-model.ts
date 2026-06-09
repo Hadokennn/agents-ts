@@ -1,42 +1,107 @@
 /**
- * Mock Model — 本地模拟模型
- *
- * 手动实现 LanguageModelV3 接口，不依赖 ai/test（避免 msw 等额外依赖）。
- * 模拟流式输出，不需要网络请求就能跑。
- *
- * 本地终端开发时，把 model 换成真实的 Qwen 即可（文章里有教）。
+ * Mock Model v0.3 — 支持 Tool Calling + 死循环模拟
  */
 
-const RESPONSES: Record<string, string> = {
-  default: '你好！我是 Super Agent 的模拟模型。当前使用本地模拟回复，流式输出的机制和真实 API 完全一样。\n\n在 .env 里填入 DASHSCOPE_API_KEY 即可切换到真实的 Qwen 模型。',
-  greeting: '你好！我是模拟模式下的 Super Agent。虽然是模拟的，但流式输出的效果和真实 API 一致 :)',
-  name: '你刚才告诉我了呀！不过说实话，我是模拟模型，我能"记住"是因为代码把对话历史传给了我。这就是 messages 数组的作用——大模型本身没有记忆，是你在"提醒"它。',
-  intro: '我是通义千问（模拟版），一个大语言模型。当前使用本地模拟回复，机制和真实 API 调用完全一致。',
-  code: '模拟模式下我没法真的写代码，但流式输出的体验你已经感受到了。填上真实的 API Key 就能解锁完整能力。',
+let retryTestCount = 0;
+
+const TEXT_RESPONSES: Record<string, string> = {
+  default:
+    '你好！我是 Super Agent 的模拟模型。当前使用本地模拟回复，工具调用的机制和真实 API 完全一样。\n\n在 .env 里填入 DASHSCOPE_API_KEY 即可切换到真实的 Qwen 模型。',
+  greeting:
+    '你好！我是 Super Agent v0.3，现在我不只能聊天，还有保险丝保护了 :)',
+  name: '你刚才告诉我了呀！不过说实话，我是模拟模型，能“记住”是因为代码把对话历史传给了我。',
 };
+
+interface ToolCallIntent {
+  toolName: string;
+  args: Record<string, unknown>;
+}
 
 function extractUserText(prompt: any[]): string {
   const userMsgs = (prompt || []).filter((m: any) => m.role === 'user');
   const last = userMsgs[userMsgs.length - 1];
   if (!last) return '';
-  return (last.content || []).map((c: any) => c.text || '').join('').toLowerCase();
+  return (last.content || [])
+    .map((c: any) => c.text || '')
+    .join('')
+    .toLowerCase();
 }
 
-function pickResponse(prompt: any[]): string {
-  const last = extractUserText(prompt);
-  if (last.includes('介绍你自己') || last.includes('你是谁')) return RESPONSES.intro;
-  if (last.includes('你好') || last.includes('hello') || last.includes('hi')) return RESPONSES.greeting;
-  if (last.includes('叫什么') || last.includes('名字') || last.includes('记得') || last.includes('记住')) return RESPONSES.name;
-  if (last.includes('代码') || last.includes('code') || last.includes('函数')) return RESPONSES.code;
-  return RESPONSES.default;
+function hasToolResults(prompt: any[]): boolean {
+  return (prompt || []).some((m: any) => m.role === 'tool');
 }
 
-const USAGE = {
-  inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
-  outputTokens: { total: 20, text: 20, reasoning: undefined },
-};
+function detectToolIntent(prompt: any[]): ToolCallIntent | null {
+  const text = extractUserText(prompt);
 
-/** 将数组转为模拟的 ReadableStream，每个 chunk 间隔 delayMs 毫秒 */
+  if (text.includes('测试死循环') || text.includes('test dead loop')) {
+    return { toolName: 'get_weather', args: { city: '北京' } };
+  }
+
+  if (hasToolResults(prompt)) return null;
+
+  const weatherKeywords = ['天气', 'weather', '温度', '热', '冷', '气温', '下雨', '晴'];
+  const hasWeatherIntent = weatherKeywords.some((kw) => text.includes(kw));
+  const cities = text.match(/(北京|上海|深圳|广州|杭州|成都)/g);
+  if (hasWeatherIntent && cities && cities.length > 0) {
+    return { toolName: 'get_weather', args: { city: cities[0] } };
+  }
+
+  const calcMatch = text.match(/(\d+)\s*[+\-*/加减乘除]\s*(\d+)/);
+  if (calcMatch) {
+    const op = text.match(/[+*/]|加|减|乘|除|-/)?.[0] || '+';
+    const opMap: Record<string, string> = { '加': '+', '减': '-', '乘': '*', '除': '/' };
+    const expression = `${calcMatch[1]} ${opMap[op] || op} ${calcMatch[2]}`;
+    return { toolName: 'calculator', args: { expression } };
+  }
+  if (text.includes('计算') || text.includes('等于')) {
+    const nums = text.match(/\d+/g);
+    if (nums && nums.length >= 2) {
+      return { toolName: 'calculator', args: { expression: `${nums[0]} + ${nums[1]}` } };
+    }
+  }
+
+  return null;
+}
+
+function pickTextResponse(prompt: any[]): string {
+  if (hasToolResults(prompt)) {
+    const toolMsgs = (prompt || []).filter((m: any) => m.role === 'tool');
+    const lastResult = toolMsgs[toolMsgs.length - 1];
+    const content = (lastResult?.content || [])
+      .map((c: any) => {
+        if (c.output?.value) return c.output.value;
+        if (c.output) return String(c.output);
+        return c.text || c.result || '';
+      })
+      .join('');
+    if (content.includes('°C') || content.includes('天气')) return `根据查询结果：${content}`;
+    if (content.includes('=')) return `计算结果：${content}`;
+    return `工具返回了以下信息：${content}`;
+  }
+  const text = extractUserText(prompt);
+  if (text.includes('你好') || text.includes('hello') || text.includes('hi'))
+    return TEXT_RESPONSES.greeting;
+  if (text.includes('叫什么') || text.includes('名字') || text.includes('记'))
+    return TEXT_RESPONSES.name;
+  return TEXT_RESPONSES.default;
+}
+
+function isInBudgetTestMode(prompt: any[]): boolean {
+  return (prompt || []).some((m: any) => {
+    if (m.role !== 'user') return false;
+    const text = (m.content || []).map((c: any) => c.text || '').join('').toLowerCase();
+    return text.includes('测试预算') || text.includes('test budget');
+  });
+}
+
+function makeUsage(prompt: any[]) {
+  if (isInBudgetTestMode(prompt)) {
+    return { inputTokens: 3000, outputTokens: 1500, totalTokens: 4500 };
+  }
+  return { inputTokens: 300, outputTokens: 200, totalTokens: 500 };
+}
+
 function createDelayedStream(chunks: any[], delayMs = 30): ReadableStream {
   return new ReadableStream({
     start(controller) {
@@ -65,24 +130,87 @@ export function createMockModel() {
     },
 
     async doGenerate({ prompt }: any) {
+      const text = extractUserText(prompt);
+
+      if (text.includes('测试重试') || text.includes('test retry')) {
+        retryTestCount++;
+        if (retryTestCount <= 2) {
+          throw new Error('429 Too Many Requests - Rate limit exceeded');
+        }
+        retryTestCount = 0;
+        return {
+          content: [{ type: 'text' as const, text: '重试成功！经过几次 429 错误后，我终于回来了。' }],
+          finishReason: { unified: 'stop' as const, raw: undefined },
+          usage: makeUsage(prompt),
+          warnings: [],
+        };
+      }
+
+      const intent = detectToolIntent(prompt);
+      if (intent) {
+        return {
+          content: [{
+            type: 'tool-call' as const,
+            toolCallId: `call-${Date.now()}`,
+            toolName: intent.toolName,
+            input: intent.args,
+          }],
+          finishReason: { unified: 'tool-calls' as const, raw: undefined },
+          usage: makeUsage(prompt),
+          warnings: [],
+        };
+      }
+
       return {
-        content: [{ type: 'text' as const, text: pickResponse(prompt) }],
+        content: [{ type: 'text' as const, text: pickTextResponse(prompt) }],
         finishReason: { unified: 'stop' as const, raw: undefined },
-        usage: USAGE,
+        usage: makeUsage(prompt),
         warnings: [],
       };
     },
 
     async doStream({ prompt }: any) {
-      const text = pickResponse(prompt);
+      const text = extractUserText(prompt);
+
+      if (text.includes('测试重试') || text.includes('test retry')) {
+        retryTestCount++;
+        if (retryTestCount <= 2) {
+          throw new Error('429 Too Many Requests - Rate limit exceeded');
+        }
+        retryTestCount = 0;
+        const reply = '重试成功！经过几次 429 错误后，我终于回来了。';
+        const id = 'text-1';
+        const chunks: any[] = [
+          { type: 'text-start', id },
+          ...reply.split('').map((char: string) => ({ type: 'text-delta', id, delta: char })),
+          { type: 'text-end', id },
+          { type: 'finish', finishReason: { unified: 'stop', raw: undefined }, usage: makeUsage(prompt) },
+        ];
+        return { stream: createDelayedStream(chunks, 30) };
+      }
+
+      const intent = detectToolIntent(prompt);
+      if (intent) {
+        const callId = `call-${Date.now()}`;
+        const argsJson = JSON.stringify(intent.args);
+        const chunks: any[] = [
+          { type: 'tool-input-start', id: callId, toolName: intent.toolName },
+          { type: 'tool-input-delta', id: callId, delta: argsJson },
+          { type: 'tool-input-end', id: callId },
+          { type: 'tool-call', toolCallId: callId, toolName: intent.toolName, input: argsJson },
+          { type: 'finish', finishReason: { unified: 'tool-calls', raw: undefined }, usage: makeUsage(prompt) },
+        ];
+        return { stream: createDelayedStream(chunks, 20) };
+      }
+
+      const replyText = pickTextResponse(prompt);
       const id = 'text-1';
       const chunks: any[] = [
         { type: 'text-start', id },
-        ...text.split('').map((char: string) => ({ type: 'text-delta', id, delta: char })),
+        ...replyText.split('').map((char: string) => ({ type: 'text-delta', id, delta: char })),
         { type: 'text-end', id },
-        { type: 'finish', finishReason: { unified: 'stop', raw: undefined }, usage: USAGE },
+        { type: 'finish', finishReason: { unified: 'stop', raw: undefined }, usage: makeUsage(prompt) },
       ];
-
       return { stream: createDelayedStream(chunks, 30) };
     },
   };

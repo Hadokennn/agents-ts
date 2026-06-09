@@ -16,10 +16,13 @@
   "dependencies": {
     "@ai-sdk/openai": "^3.0.53",
     "ai": "^6.0.161",
-    "dotenv": "^17.4.2"
+    "dotenv": "^17.4.2",
+    "pnpm": "^11.0.8",
+    "turndown": "^7.2.4"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
+    "@types/turndown": "^5.0.6",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2"
   }

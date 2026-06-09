@@ -1,32 +1,74 @@
 import 'dotenv/config';
 import { type ModelMessage } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
-import { weatherTool, calculatorTool } from './tools';
+import { createMockModel } from './mock/mock-model.js';
+import { ToolRegistry } from './tools/registry.js';
+import { allTools } from './tools/index.js';
+import { agentLoop, type BudgetState } from './agent-loop.js';
 import { createInterface } from 'node:readline';
-import { agentLoop } from './agent-loop';
-
-const tools = { get_weather: weatherTool, calculator: calculatorTool };
+import { UsageTracker } from './usage/tracker.js';
 
 const deepseek = createOpenAI({
   baseURL: 'https://api.deepseek.com',
   apiKey: process.env.DEEPSEEK_API_KEY,
 });
 
-const kimi = createOpenAI({
-  baseURL: 'https://api.moonshot.cn/v1',
-  apiKey: process.env.MOONSHOT_API_KEY,
-});
+const model = process.env.DEEPSEEK_API_KEY
+  ? deepseek.chat('deepseek-v4-flash')
+  : createMockModel();
+
+const registry = new ToolRegistry();
+registry.register(...allTools);
+
+console.log(`已注册 ${registry.getAll().length} 个工具：`);
+for (const tool of registry.getAll()) {
+  const flags = [
+    tool.isConcurrencySafe ? '可并发' : '串行',
+    tool.isReadOnly ? '只读' : '读写',
+  ].join(', ');
+  console.log(`  - ${tool.name}（${flags}）`);
+}
 
 const rl = createInterface({
   input: process.stdin,
   output: process.stdout,
 });
 
-const SYSTEM = `你是 Super Agent，一个有工具调用能力的 AI 助手。
-需要查询信息时，主动使用工具，不要编造数据。
-回答要简洁直接。`;
+const SYSTEM = `你是 Super Agent，一个能读代码、抓网页、生成项目的 AI 助手。
+你有这些工具可用：read_file, write_file, list_directory, edit_file, glob, grep, bash, fetch_url, start_preview, get_weather, calculator。
+
+针对常见任务的执行策略：
+
+1. 用户让你"分析项目"或"找代码"时：
+   先 list_directory 看结构 → grep 定位关键内容 → 必要时 read_file 看细节 → 最后给出归纳总结。
+
+2. 用户给你 URL 时：
+   用 fetch_url 抓取（多 URL 可以并行），再综合总结。
+
+3. 用户让你"做一个网页应用 / 待办应用 / 任意 web demo"时（必须实际调用工具，不要只描述）：
+
+   **重要的项目约定（不要自己重写 bootstrap）**：
+   - app/index.html 已经预置在模板里，固定用 import maps 引 React + Babel Standalone 实时编译 TSX
+   - app/index.html 固定加载 ./App.tsx 作为入口、固定引用 ./styles.css 作为样式
+   - 你**禁止**写入或修改 app/index.html（它已经能正确工作）
+
+   **你需要做的事**：
+   - 用 write_file 至少生成这三个文件：
+     1. app/styles.css — 应用样式
+     2. app/App.tsx — **必须**用 \`import { createRoot } from 'react-dom/client'\` 把组件渲染到 \`document.getElementById('root')\`
+     3. app/Button.tsx 或其他组件 .tsx — 可被 App.tsx import
+   - .tsx 之间用相对路径 import：\`import { Button } from './Button.tsx'\`（必须带 .tsx 后缀）
+   - React 用 \`import React, { useState } from 'react'\`，不要从其他源导入
+   - 文件全部写完后**立即**调用 start_preview 启动预览服务器（这一步绝对不能省）
+   - 最后用一段简短文本告诉用户：生成了哪些文件 + 预览地址
+
+回答简洁直接，独立的工具调用尽量并行执行。`;
 
 const messages: ModelMessage[] = [];
+// 预算由调用方持有，跨轮持续累计——agentLoop 只负责消费它
+const budget: BudgetState = { used: 0, limit: 15000 };
+
+const tracker = new UsageTracker('.usage/today.jsonl');
 
 function ask() {
   rl.question('\nYou: ', async (input) => {
@@ -39,11 +81,11 @@ function ask() {
 
     messages.push({ role: 'user', content: trimmed });
 
-    await agentLoop(deepseek.chat('deepseek-reasoner'), tools, messages, SYSTEM);
+    await agentLoop(model, registry, messages, SYSTEM, budget, tracker);
 
     ask();
   });
 }
 
-console.log('Super Agent v0.2 (type "exit" to quit)\n');
+console.log('Super Agent v0.3 (type "exit" to quit)\n');
 ask();
