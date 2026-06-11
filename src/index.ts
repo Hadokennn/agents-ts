@@ -7,6 +7,7 @@ import { allTools } from './tools/index.js';
 import { agentLoop, type BudgetState } from './agent-loop.js';
 import { createInterface } from 'node:readline';
 import { UsageTracker } from './usage/tracker.js';
+import { HandwrittenMCPClient, SDKMCPClient, MockMCPClient } from './mcp-client.js';
 
 const deepseek = createOpenAI({
   baseURL: 'https://api.deepseek.com',
@@ -20,13 +21,49 @@ const model = process.env.DEEPSEEK_API_KEY
 const registry = new ToolRegistry();
 registry.register(...allTools);
 
-console.log(`已注册 ${registry.getAll().length} 个工具：`);
-for (const tool of registry.getAll()) {
-  const flags = [
-    tool.isConcurrencySafe ? '可并发' : '串行',
-    tool.isReadOnly ? '只读' : '读写',
-  ].join(', ');
-  console.log(`  - ${tool.name}（${flags}）`);
+// MCP 实现选择：'handwritten' 或 'sdk'
+const MCP_IMPLEMENTATION = (process.env.MCP_IMPLEMENTATION || 'sdk').toLowerCase() as 'handwritten' | 'sdk';
+
+async function connectMCP() {
+  const githubToken = process.env.GITHUB_PERSONAL_ACCESS_TOKEN;
+
+  let canSpawn = true;
+  try {
+    const { execSync } = await import('node:child_process');
+    execSync('echo test', { stdio: 'ignore' });
+  } catch {
+    canSpawn = false;
+  }
+
+  if (githubToken && canSpawn) {
+    console.log(`\n连接 GitHub MCP Server (${MCP_IMPLEMENTATION} 实现)...`);
+    try {
+      const client = MCP_IMPLEMENTATION === 'handwritten' 
+        ? new HandwrittenMCPClient(
+            'npx', ['-y', '@modelcontextprotocol/server-github'],
+            { GITHUB_PERSONAL_ACCESS_TOKEN: githubToken },
+          )
+        : new SDKMCPClient(
+            'npx', ['-y', '@modelcontextprotocol/server-github'],
+            { GITHUB_PERSONAL_ACCESS_TOKEN: githubToken },
+          );
+      
+      const tools = await registry.registerMCPServer('github', client);
+      console.log(`  已注册 ${tools.length} 个 MCP 工具\n`);
+      return;
+    } catch (err) {
+      console.log(`  MCP 连接失败: ${err instanceof Error ? err.message : err}`);
+      console.log('  降级为 Mock MCP...');
+    }
+  }
+
+  if (!githubToken) {
+    console.log('\n未配置 GITHUB_PERSONAL_ACCESS_TOKEN，使用 Mock MCP');
+  }
+
+  const mockClient = new MockMCPClient();
+  const tools = await registry.registerMCPServer('github', mockClient);
+  console.log(`  已注册 ${tools.length} 个 Mock MCP 工具`);
 }
 
 const rl = createInterface({
@@ -87,5 +124,14 @@ function ask() {
   });
 }
 
-console.log('Super Agent v0.3 (type "exit" to quit)\n');
+await connectMCP();
+console.log(`共注册 ${registry.getAll().length} 个工具：`);
+for (const tool of registry.getAll()) {
+  const flags = [
+    tool.isConcurrencySafe ? '可并发' : '串行',
+    tool.isReadOnly ? '只读' : '读写',
+  ].join(', ');
+  console.log(`  - ${tool.name}（${flags}）`);
+}
+console.log('\nSuper Agent v0.5 (type "exit" to quit)\n');
 ask();

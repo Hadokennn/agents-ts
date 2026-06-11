@@ -12,6 +12,15 @@ export type BudgetState = {
   limit: number;
 };
 
+interface ReasoningChainStep {
+  step: number;
+  type: 'text' | 'tool-call' | 'tool-result';
+  content: string;
+  toolName?: string;
+  toolInput?: unknown;
+  toolOutput?: unknown;
+}
+
 export async function agentLoop(
   model: any,
   registry: ToolRegistry,
@@ -22,6 +31,7 @@ export async function agentLoop(
 ) {
   let step = 0;
   let totalTokens = 0;
+  const reasoningChain: ReasoningChainStep[] = [];
   resetHistory();
 
   while (step < MAX_STEPS) {
@@ -58,6 +68,14 @@ export async function agentLoop(
               hasToolCall = true;
               lastToolCall = { name: part.toolName, input: part.input };
               console.log(`  [调用: ${part.toolName}(${JSON.stringify(part.input)})]`);
+              
+              reasoningChain.push({
+                step,
+                type: 'tool-call',
+                content: `调用工具 ${part.toolName}`,
+                toolName: part.toolName,
+                toolInput: part.input,
+              });
 
               const detection = detect(part.toolName, part.input);
               if (detection.stuck) {
@@ -78,6 +96,15 @@ export async function agentLoop(
               const output = typeof part.output === 'string' ? part.output : JSON.stringify(part.output);
               const preview = output.length > 120 ? output.slice(0, 120) + '...' : output;
               console.log(`  [结果: ${part.toolName}] ${preview}`);
+              
+              reasoningChain.push({
+                step,
+                type: 'tool-result',
+                content: `工具 ${part.toolName} 返回结果`,
+                toolName: part.toolName,
+                toolOutput: part.output,
+              });
+
               if (lastToolCall) {
                 recordResult(lastToolCall.name, lastToolCall.input, part.output);
               }
@@ -107,6 +134,15 @@ export async function agentLoop(
 
     messages.push(...stepResponse!.messages);
 
+    // 记录文本响应到推理链
+    if (fullText) {
+      reasoningChain.push({
+        step,
+        type: 'text',
+        content: fullText,
+      });
+    }
+
     // 把 usage 喂给 tracker；tracker 内部按四类 token 分别累加并算 cost
     const norm = normalizeUsage(stepUsage);
     const stepRecord = tracker?.record(model?.modelId || 'mock-model', norm);
@@ -116,7 +152,7 @@ export async function agentLoop(
     if (stepRecord && (norm.cacheReadTokens > 0 || norm.cacheWriteTokens > 0)) {
       const tag = norm.cacheReadTokens > 0 ? `\x1b[38;5;36m✓ cache hit\x1b[0m` : `\x1b[38;5;220m✎ cache write\x1b[0m`;
       const detail = norm.cacheReadTokens > 0 ? `read ${norm.cacheReadTokens}` : `write ${norm.cacheWriteTokens}`;
-      console.log(`  [${tag}] ${detail} tokens · 本步 $${stepRecord.cost.toFixed(5)}`);
+      console.log(`\n[${tag}] ${detail} tokens · 本步 $${stepRecord.cost.toFixed(5)}`);
     }
 
     if (totalTokens > budget?.limit * 0.9) {
@@ -138,4 +174,35 @@ export async function agentLoop(
   if (step >= MAX_STEPS) {
     console.log('\n[达到最大步数]');
   }
+
+  // 打印推理链
+  console.log('\n' + '='.repeat(60));
+  console.log('🧠 推理链');
+  console.log('='.repeat(60));
+  
+  let currentStep = 0;
+  for (const chainStep of reasoningChain) {
+    if (chainStep.step !== currentStep) {
+      currentStep = chainStep.step;
+      console.log(`\n--- 步骤 ${currentStep} ---`);
+    }
+
+    switch (chainStep.type) {
+      case 'text':
+        console.log(`📝 文本回复: ${chainStep.content}`);
+        break;
+      case 'tool-call':
+        console.log(`🔧 调用工具: ${chainStep.toolName}`);
+        console.log(`   参数: ${JSON.stringify(chainStep.toolInput)}`);
+        break;
+      case 'tool-result':
+        console.log(`✅ 工具结果: ${chainStep.toolName}`);
+        const resultStr = typeof chainStep.toolOutput === 'string' 
+          ? chainStep.toolOutput 
+          : JSON.stringify(chainStep.toolOutput, null, 2);
+        console.log(`   返回: ${resultStr.length > 200 ? resultStr.slice(0, 200) + '...' : resultStr}`);
+        break;
+    }
+  }
+  console.log('\n' + '='.repeat(60) + '\n');
 }

@@ -1,5 +1,5 @@
 import { jsonSchema } from 'ai';
-
+import { HandwrittenMCPClient, SDKMCPClient, MockMCPClient } from '../mcp-client.js';
 export interface ToolDefinition {
   name: string;
   description: string;
@@ -12,8 +12,12 @@ export interface ToolDefinition {
 
 const DEFAULT_MAX_RESULT_CHARS = 3000;
 
+type MCPClientType = HandwrittenMCPClient | SDKMCPClient;
+
 export class ToolRegistry {
   private tools = new Map<string, ToolDefinition>();
+  private mcpClients: Array<MCPClientType | MockMCPClient> = [];
+  private registeredMCPServers = new Set<string>();
 
   // 三个状态变量构成一把读写锁
   private exclusiveLock = false;          // 当前是否有独占锁持有者
@@ -103,6 +107,66 @@ export class ToolRegistry {
     }
     return result;
   }
+
+  async registerMCPServer(
+    serverName: string,
+    client: MCPClientType | MockMCPClient,
+  ): Promise<string[]> {
+    // 检查是否已注册
+    if (this.registeredMCPServers.has(serverName)) {
+      console.log(`  [MCP] Server "${serverName}" 已注册，跳过`);
+      return [];
+    }
+
+    await client.connect();
+
+    // 先尝试拉取工具，成功后才登记这个 server。
+    // 否则连接成功但 listTools 失败时，serverName 已被标记为已注册，
+    // 后续 Mock 降级会被开头的 "已注册，跳过" 挡掉，导致 0 工具。
+    let tools: Awaited<ReturnType<typeof client.listTools>>;
+    try {
+      tools = await client.listTools();
+    } catch (err) {
+      await client.close().catch(() => {});
+      throw err;
+    }
+
+    this.mcpClients.push(client);
+    this.registeredMCPServers.add(serverName);
+
+    const registered: string[] = [];
+
+    for (const tool of tools) {
+      const prefixedName = `mcp__${serverName}__${tool.name}`;
+      if (this.tools.has(prefixedName)) continue;
+
+      const toolClient = client;
+      const originalName = tool.name;
+
+      this.register({
+        name: prefixedName,
+        description: `[MCP:${serverName}] ${tool.description}`,
+        parameters: tool.inputSchema as Record<string, unknown>,
+        isConcurrencySafe: true,
+        isReadOnly: true,
+        maxResultChars: 3000,
+        execute: async (input: any) => {
+          return toolClient.callTool(originalName, input);
+        },
+      });
+
+      registered.push(prefixedName);
+    }
+
+    return registered;
+  }
+
+  async closeAllMCP(): Promise<void> {
+    for (const client of this.mcpClients) {
+      await client.close();
+    }
+    this.mcpClients = [];
+  }
 }
 
 export function truncateResult(text: string, maxChars: number = DEFAULT_MAX_RESULT_CHARS): string {
@@ -116,3 +180,4 @@ export function truncateResult(text: string, maxChars: number = DEFAULT_MAX_RESU
 
   return `${head}\n\n... [省略 ${dropped} 字符] ...\n\n${tail}`;
 }
+
