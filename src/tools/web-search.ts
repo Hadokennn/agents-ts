@@ -16,6 +16,7 @@ export const tavilySearchTool: ToolDefinition = {
   },
   isConcurrencySafe: true,
   isReadOnly: true,
+  shouldDefer: true,
   maxResultChars: 3000,
   execute: async ({ query, max_results = 5 }: { query: string; max_results?: number }) => {
     const apiKey = process.env.TAVILY_API_KEY;
@@ -67,6 +68,7 @@ export const serperSearchTool: ToolDefinition = {
   },
   isConcurrencySafe: true,
   isReadOnly: true,
+  shouldDefer: true,
   maxResultChars: 3000,
   execute: async ({ query, max_results = 5 }: { query: string; max_results?: number }) => {
     const apiKey = process.env.SERPER_API_KEY;
@@ -120,6 +122,7 @@ export const webFetchTool: ToolDefinition = {
   },
   isConcurrencySafe: true,
   isReadOnly: true,
+  shouldDefer: true,
   maxResultChars: 3000,
   execute: async ({ url }: { url: string }) => {
     try {

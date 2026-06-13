@@ -7,6 +7,8 @@ export interface ToolDefinition {
   isConcurrencySafe?: boolean;
   isReadOnly?: boolean;
   maxResultChars?: number;
+  shouldDefer?: boolean; // 是否延迟加载
+  searchHint?: string; // 搜索提示词，帮助 ToolSearch 匹配
   execute: (input: any) => Promise<unknown>;
 }
 
@@ -18,6 +20,7 @@ export class ToolRegistry {
   private tools = new Map<string, ToolDefinition>();
   private mcpClients: Array<MCPClientType | MockMCPClient> = [];
   private registeredMCPServers = new Set<string>();
+  private discoveredTools = new Set<string>();
 
   // 三个状态变量构成一把读写锁
   private exclusiveLock = false;          // 当前是否有独占锁持有者
@@ -72,23 +75,25 @@ export class ToolRegistry {
 
   toAISDKFormat(): Record<string, any> {
     const result: Record<string, any> = {};
-    for (const [name, tool] of this.tools) {
+    const activeTools = this.getActiveTools();
+
+    for (const tool of activeTools) {
       const maxChars = tool.maxResultChars;
       const executeFn = tool.execute;
       const isSafe = tool.isConcurrencySafe === true;
       const registry = this;
 
-      result[name] = {
+      result[tool.name] = {
         description: tool.description,
         inputSchema: jsonSchema(tool.parameters as any),
         execute: async (input: any) => {
           // 在真正执行前先按 isConcurrencySafe 获取锁
           if (isSafe) {
             await registry.acquireConcurrent();
-            console.log(`  [并发] ${name} 获取共享锁`);
+            console.log(`  [并发] ${tool.name} 获取共享锁`);
           } else {
             await registry.acquireExclusive();
-            console.log(`  [串行] ${name} 获取独占锁，等待其他工具完成`);
+            console.log(`  [串行] ${tool.name} 获取独占锁，等待其他工具完成`);
           }
           try {
             const raw = await executeFn(input);
@@ -127,7 +132,7 @@ export class ToolRegistry {
     try {
       tools = await client.listTools();
     } catch (err) {
-      await client.close().catch(() => {});
+      await client.close().catch(() => { });
       throw err;
     }
 
@@ -149,6 +154,8 @@ export class ToolRegistry {
         parameters: tool.inputSchema as Record<string, unknown>,
         isConcurrencySafe: true,
         isReadOnly: true,
+        shouldDefer: true,
+        searchHint: `${serverName} ${tool.name} ${tool.description}`,
         maxResultChars: 3000,
         execute: async (input: any) => {
           return toolClient.callTool(originalName, input);
@@ -167,6 +174,71 @@ export class ToolRegistry {
     }
     this.mcpClients = [];
   }
+
+  searchTools(query: string): ToolDefinition[] {
+    const q = query.trim();
+    const results: ToolDefinition[] = [];
+
+    const names = q.includes(',')
+      ? q.split(',').map(n => n.trim()).filter(Boolean)
+      : [q];
+
+    for (const name of names) {
+      const tool = this.tools.get(name);
+      if (tool && tool.name !== 'tool_search') {
+        results.push(tool);
+        this.discoveredTools.add(tool.name);
+      }
+    }
+    return results;
+  }
+
+  getActiveTools(): ToolDefinition[] {
+    return this.getAll().filter(tool => {
+      if (tool.shouldDefer && !this.discoveredTools.has(tool.name)) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  getDeferredToolSummary(): string {
+    const deferred = this.getAll().filter(tool => {
+      return tool.shouldDefer && !this.discoveredTools.has(tool.name);
+    });
+
+    if (deferred.length === 0) return '';
+
+    const lines = deferred.map(t => {
+      const hint = t.searchHint ? ` — ${t.searchHint}` : '';
+      return `  - ${t.name}${hint}`;
+    });
+
+    return `\n以下工具可用，但需要先通过 tool_search 搜索获取完整定义：\n${lines.join('\n')}`;
+  }
+
+  countTokenEstimate(): { active: number; deferred: number; total: number } {
+    let active = 0;
+    let deferred = 0;
+
+    for (const tool of this.tools.values()) {
+      const schemaSize = JSON.stringify({
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters,
+      }).length;
+      const tokens = Math.ceil(schemaSize / 4);
+
+      if (tool.shouldDefer && !this.discoveredTools.has(tool.name)) {
+        deferred += tokens;
+      } else {
+        active += tokens;
+      }
+    }
+
+    return { active, deferred, total: active + deferred };
+  }
+
 }
 
 export function truncateResult(text: string, maxChars: number = DEFAULT_MAX_RESULT_CHARS): string {

@@ -121,6 +121,7 @@ export const startPreviewTool: ToolDefinition = {
   },
   isConcurrencySafe: false,
   isReadOnly: false,
+  shouldDefer: true,
   execute: async ({ port = 8080 }: { port?: number } = {}) => {
     const root = resolve('app');
     if (!existsSync(root)) return '错误：app/ 目录不存在，请先用 write_file 生成应用文件';
