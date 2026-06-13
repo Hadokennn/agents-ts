@@ -9,6 +9,7 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["--import", "tsx"],
       "program": "${workspaceFolder}/src/index.ts",
+      "args": ["--continue"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "sourceMaps": true,

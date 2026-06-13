@@ -78,3 +78,14 @@
 {"ts":1781268727277,"model":"deepseek-v4-flash","cost":0.00026995999999999997,"inputTokens":35,"outputTokens":97,"cacheReadTokens":2048,"cacheWriteTokens":0}
 {"ts":1781268806938,"model":"deepseek-v4-flash","cost":0.0008634,"inputTokens":575,"outputTokens":125,"cacheReadTokens":1920,"cacheWriteTokens":0}
 {"ts":1781268862753,"model":"deepseek-v4-flash","cost":0.0015412,"inputTokens":1162,"outputTokens":164,"cacheReadTokens":2560,"cacheWriteTokens":0}
+{"ts":1781337093276,"model":"deepseek-v4-flash","cost":0.00025196,"inputTokens":35,"outputTokens":88,"cacheReadTokens":2048,"cacheWriteTokens":0}
+{"ts":1781337095910,"model":"deepseek-v4-flash","cost":0.00059952,"inputTokens":310,"outputTokens":123,"cacheReadTokens":2176,"cacheWriteTokens":0}
+{"ts":1781337097766,"model":"deepseek-v4-flash","cost":0.0015302,"inputTokens":1137,"outputTokens":171,"cacheReadTokens":2560,"cacheWriteTokens":0}
+{"ts":1781340407036,"model":"deepseek-v4-flash","cost":0.00190196,"inputTokens":1629,"outputTokens":116,"cacheReadTokens":2048,"cacheWriteTokens":0}
+{"ts":1781340410204,"model":"deepseek-v4-flash","cost":0.0006812400000000001,"inputTokens":133,"outputTokens":237,"cacheReadTokens":3712,"cacheWriteTokens":0}
+{"ts":1781340547689,"model":"deepseek-v4-flash","cost":0.0007556800000000001,"inputTokens":446,"outputTokens":119,"cacheReadTokens":3584,"cacheWriteTokens":0}
+{"ts":1781340560242,"model":"deepseek-v4-flash","cost":0.00254152,"inputTokens":2288,"outputTokens":105,"cacheReadTokens":2176,"cacheWriteTokens":0}
+{"ts":1781340562723,"model":"deepseek-v4-flash","cost":0.0016665999999999999,"inputTokens":1177,"outputTokens":200,"cacheReadTokens":4480,"cacheWriteTokens":0}
+{"ts":1781340583685,"model":"deepseek-v4-flash","cost":0.00399952,"inputTokens":3608,"outputTokens":174,"cacheReadTokens":2176,"cacheWriteTokens":0}
+{"ts":1781342585044,"model":"deepseek-v4-flash","cost":0.001649,"inputTokens":1467,"outputTokens":91,"cacheReadTokens":0,"cacheWriteTokens":0}
+{"ts":1781342588485,"model":"deepseek-v4-flash","cost":0.001912,"inputTokens":1758,"outputTokens":77,"cacheReadTokens":0,"cacheWriteTokens":0}

@@ -1,5 +1,5 @@
 import { jsonSchema } from 'ai';
-import { HandwrittenMCPClient, SDKMCPClient, MockMCPClient } from '../mcp-client.js';
+import { HandwrittenMCPClient, SDKMCPClient, MockMCPClient } from './mcp-client.js';
 export interface ToolDefinition {
   name: string;
   description: string;

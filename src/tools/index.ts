@@ -1,4 +1,4 @@
-import type { ToolDefinition } from './registry.js';
+import type { ToolDefinition, ToolRegistry } from './registry.js';
 import { readFileTool, writeFileTool, editFileTool, listDirectoryTool, startPreviewTool } from './file-tools.js';
 import { globTool, grepTool } from './search-tools.js';
 import { bashTool } from './shell-tools.js';
@@ -22,4 +22,5 @@ export {
   globTool, grepTool,
   bashTool,
   ToolDefinition,
+  ToolRegistry,
 };

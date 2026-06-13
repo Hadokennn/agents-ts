@@ -1,8 +1,8 @@
 import { streamText, type ModelMessage } from 'ai';
-import { ToolRegistry } from './tools/registry.js';
+import { ToolRegistry } from '../tools/registry.js';
 import { detect, recordCall, recordResult, resetHistory } from './loop-detection.js';
 import { isRetryable, calculateDelay, sleep } from './retry.js';
-import { type UsageTracker, normalizeUsage } from './usage/tracker.js';
+import { type UsageTracker, normalizeUsage } from '../usage/tracker.js';
 
 const MAX_STEPS = 15;
 const MAX_RETRIES = 3;
