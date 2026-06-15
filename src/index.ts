@@ -11,9 +11,18 @@ import { HandwrittenMCPClient, SDKMCPClient, MockMCPClient } from './tools/mcp-c
 import { ToolDefinition } from './tools/index.js';
 import { SessionStore } from './session/store.js';
 import { PromptContext, PromptBuilder, coreRules, toolGuide, sessionContext, deferredTools, strategies } from './context/prompt-builder.js';
+import { microcompact, summarize, estimateTokens } from './context/compressor.js';
+import { injectFakeHistory } from './mock/fake.js';
+import { applyDefense, estimateMessageTokens } from './context/defense.js';
+import { buildContextSnapshot, renderContextView, renderUsageView } from './context/view.js';
 
 let messages: ModelMessage[] = [];
 
+// 预算由调用方持有，跨轮持续累计——agentLoop 只负责消费它
+const budget: BudgetState = { used: 0, limit: 15000 };
+const tracker = new UsageTracker('.usage/today.jsonl');
+
+// model 初始化选择
 const deepseek = createOpenAI({
   baseURL: 'https://api.deepseek.com',
   apiKey: process.env.DEEPSEEK_API_KEY,
@@ -22,12 +31,6 @@ const deepseek = createOpenAI({
 const model = process.env.DEEPSEEK_API_KEY
   ? deepseek.chat('deepseek-v4-flash')
   : createMockModel();
-
-
-const rl = createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
 
 // tools 注册
 const registry = new ToolRegistry();
@@ -102,10 +105,35 @@ async function connectMCP() {
   console.log(`  已注册 ${tools.length} 个 Mock MCP 工具`);
 }
 
-// 预算由调用方持有，跨轮持续累计——agentLoop 只负责消费它
-const budget: BudgetState = { used: 0, limit: 15000 };
-const tracker = new UsageTracker('.usage/today.jsonl');
+const rl = createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
 
+
+/** 
+ * 这个压缩太简陋了，怎么简陋的？
+ * 
+ **/
+async function autoCompact(messages: ModelMessage[], summary: string) {
+  let _messages = messages.slice();
+  // Check if compaction needed after each turn
+  const currentTokens = estimateTokens(_messages);
+  if (currentTokens > 4000) {
+    console.log(`\n  [压缩检查] ~${currentTokens} tokens, 触发压缩...`);
+    const mc = microcompact(_messages);
+    _messages = mc.messages;
+    if (mc.cleared > 0) console.log(`  [Microcompact] 清理了 ${mc.cleared} 个工具结果`);
+
+    const comp = await summarize(model, _messages, summary);
+    if (comp.compressedCount > 0) {
+      _messages = comp.messages;
+      summary = comp.summary;
+      console.log(`  [Summarization] 压缩了 ${comp.compressedCount} 条消息, ~${estimateTokens(_messages)} tokens`);
+    }
+  }
+  return { messages: _messages, summary };
+}
 
 async function main() {
   await connectMCP();
@@ -114,12 +142,35 @@ async function main() {
   const isContinue = process.argv.includes('--continue');
   const sessionId = 'default';
   const store = new SessionStore(sessionId);
+  const timestamps = new Map<number, number>();
+
   if (isContinue && store.exists()) {
     messages = store.load();
-    console.log(`[Session] 恢复会话，${messages.length} 条历史消息\n`);
+    const firstTokens = estimateTokens(messages);
+    console.log(`[Session] 恢复会话，${messages.length} 条历史消息， ~${firstTokens} tokens\n`);
   } else {
+    // injectFakeHistory(messages);
     console.log(`[Session] 新会话\n`);
   }
+
+  // Apply three-layer defense
+  const beforeTokens = estimateMessageTokens(messages);
+  console.log(`\n=== 三层即时防线 ===`);
+  console.log(`[防线前] ${messages.length} 条消息, ~${beforeTokens} tokens`);
+
+  const defense = applyDefense(messages, timestamps);
+  messages = defense.messages;
+  console.log(`[Layer 2: 截断] ${defense.truncated} 个超长结果被截断，${defense.compacted} 个消息被压缩到 ~${defense.tokenEstimate} tokens·`);
+  console.log(`[Layer 3: TTL] ${defense.softPruned} 个软修剪, ${defense.hardPruned} 个硬清除`);
+  console.log(`[防线后] ${messages.length} 条消息, ~${defense.tokenEstimate} tokens (节省 ${beforeTokens - defense.tokenEstimate})`);
+  console.log(`====================\n`);
+
+
+  let summary = '';
+  // Layer 1: Microcompact
+  const { messages: compactedMessages, summary: compactedSummary } = await autoCompact(messages, summary);
+  messages = compactedMessages;
+  summary = compactedSummary;
 
   const deferredSummary = registry.getDeferredToolSummary();
   const promptCtx: PromptContext = {
@@ -141,15 +192,6 @@ async function main() {
   console.log(`=== SYSTEM PROMPT ===\n`);
   builder.debug(promptCtx);  // 显示各模块状态
 
-  console.log(`共注册 ${registry.getAll().length} 个工具：`);
-  for (const tool of registry.getAll()) {
-    const flags = [
-      tool.isConcurrencySafe ? '可并发' : '串行',
-      tool.isReadOnly ? '只读' : '读写',
-    ].join(', ');
-    console.log(`  - ${tool.name}（${flags}）`);
-  }
-
   const allCount = registry.getAll().length;
   const activeTools = registry.getActiveTools();
   const estimate = registry.countTokenEstimate();
@@ -159,6 +201,40 @@ async function main() {
   console.log(`  活跃工具: ${activeTools.length} 个`);
   console.log(`  延迟工具: ${allCount - activeTools.length} 个`);
   console.log(`  Token 估算: ~${estimate.active} (活跃) + ~${estimate.deferred} (延迟，不占 prompt)`);
+  // Quick triggers for demo
+  function handleQuickTrigger(cmd: string): boolean {
+    const now = Date.now();
+
+    if (cmd === '/status' || cmd === 'status') {
+      const tokens = estimateMessageTokens(messages);
+      const toolMsgs = messages.filter(m => m.role === 'tool').length;
+      console.log(`\n[状态] ${messages.length} 条消息 (${toolMsgs} 条工具结果), ~${tokens} tokens\n`);
+      return true;
+    }
+
+    // /context: 终端可视化的 context 占用，参考 Claude Code 的 /context
+    if (cmd === '/context' || cmd === 'context') {
+      const snapshot = buildContextSnapshot({
+        modelName: process.env.DEEPSEEK_API_KEY ? 'Deepseek V4 Flash' : 'Mock Model (开发用)',
+        modelId: process.env.DEEPSEEK_API_KEY ? 'deepseek-v4-flash' : 'mock-model',
+        windowTokens: 1_000_000,
+        systemPromptChars: SYSTEM.length,
+        toolDescriptionChars: registry.getActiveTools().reduce((a, t) => a + t.name.length + (t.description?.length || 0) + JSON.stringify(t.parameters || {}).length, 0),
+        memoryChars: 0,
+        skillsChars: 0,
+        messages,
+      });
+      console.log(renderContextView(snapshot));
+      return true;
+    }
+
+    if (cmd === '/usage' || cmd === 'usage') {
+      console.log(renderUsageView(tracker));
+      return true;
+    }
+
+    return false;
+  }
 
   function ask() {
     rl.question('\nYou: ', async (input) => {
@@ -169,17 +245,37 @@ async function main() {
         return;
       }
 
+      if (handleQuickTrigger(trimmed)) {
+        ask();
+        return;
+      }
+
       // Session 持久化
       const userMsg: ModelMessage = { role: 'user', content: trimmed };
       messages.push(userMsg);
       store.append(userMsg);
 
       const beforeLen = messages.length;
+
+      console.log('\n--- 执行三层防线 ---');
+      const before = estimateMessageTokens(messages);
+      const def = applyDefense(messages, timestamps);
+      console.log(`\n=== 三层即时防线 ===`);
+      messages = def.messages;
+      console.log(`  [Layer 2] 截断: ${def.truncated} 条, 预算清理: ${def.compacted} 条`);
+      console.log(`  [Layer 3] 软修剪: ${def.softPruned}, 硬清除: ${def.hardPruned}`);
+      console.log(`  [结果] ~${before} → ~${def.tokenEstimate} tokens (节省 ${before - def.tokenEstimate})\n`);
+      console.log(`====================\n`);
+
       await agentLoop(model, registry, messages, SYSTEM, budget, tracker);
 
       // 持久化本轮新增的消息（agent loop 会往 messages 里 push assistant/tool 消息）
       const newMessages = messages.slice(beforeLen);
       store.appendAll(newMessages);
+
+      const { messages: compactedMessages, summary: compactedSummary } = await autoCompact(messages, summary);
+      messages = compactedMessages;
+      summary = compactedSummary;
 
       ask();
     });

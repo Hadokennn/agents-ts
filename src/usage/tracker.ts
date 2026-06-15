@@ -35,7 +35,7 @@ export const PRICE_TABLE: Record<string, ModelPricing> = {
   'gemini-3-flash':       { input: 0.30,  output: 1.20,  cacheWrite: 0.30,  cacheRead: 0.075 },
   // 国产
   'deepseek-v3-2':        { input: 0.27,  output: 1.10,  cacheWrite: 0.27,  cacheRead: 0.027 },
-  'deepseek-v4-flash':    { input: 1.00,  output: 2.00,  cacheWrite: 0.02,  cacheRead: 0.02 },
+  'deepseek-v4-flash':    { input: 1.00,  output: 2.00,  cacheWrite: 1.00,  cacheRead: 0.10 },
   'qwen3-6-plus':         { input: 0.40,  output: 1.20,  cacheWrite: 0.40,  cacheRead: 0.04 },
   'kimi-k2-6':            { input: 0.60,  output: 2.50,  cacheWrite: 0.60,  cacheRead: 0.15 },
   'doubao-2-0-pro':       { input: 0.30,  output: 0.90,  cacheWrite: 0.30,  cacheRead: 0.12 },

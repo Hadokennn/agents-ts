@@ -54,7 +54,7 @@ export async function agentLoop(
           messages,
           maxRetries: 0,
           providerOptions: { openai: { parallelToolCalls: true } },
-          onError: () => {},
+          onError: ({ error }) => { console.error('[stream error]', error); },
         });
 
         for await (const part of result.fullStream) {
