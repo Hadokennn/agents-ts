@@ -8,19 +8,17 @@ import { agentLoop, type BudgetState } from './agent/loop.js';
 import { createInterface } from 'node:readline';
 import { UsageTracker } from './usage/tracker.js';
 import { HandwrittenMCPClient, SDKMCPClient, MockMCPClient } from './tools/mcp-client.js';
-import { ToolDefinition } from './tools/index.js';
 import { SessionStore } from './session/store.js';
 import { PromptContext, PromptBuilder, coreRules, toolGuide, sessionContext, deferredTools, strategies } from './context/prompt-builder.js';
 import { microcompact, summarize, estimateTokens } from './context/compressor.js';
-import { injectFakeHistory } from './mock/fake.js';
+import { createToolSearchTool } from './tools/tool-search.js';
 import { applyDefense, estimateMessageTokens } from './context/defense.js';
-import { buildContextSnapshot, renderContextView, renderUsageView } from './context/view.js';
-
-let messages: ModelMessage[] = [];
-
-// 预算由调用方持有，跨轮持续累计——agentLoop 只负责消费它
-const budget: BudgetState = { used: 0, limit: 15000 };
-const tracker = new UsageTracker('.usage/today.jsonl');
+import { MemoryStore } from './memory/store.js';
+import { createMemoryTool } from './tools/memory-tools.js';
+import { createDispatcher, type CommandContext } from './commands/index.js';
+import { debugCommands } from './commands/debugger.js';
+import { contextCommands } from './commands/context.js';
+import { memoryCommands } from './commands/memory.js';
 
 // model 初始化选择
 const deepseek = createOpenAI({
@@ -34,31 +32,13 @@ const model = process.env.DEEPSEEK_API_KEY
 
 // tools 注册
 const registry = new ToolRegistry();
-const toolSearchTool: ToolDefinition = {
-  name: 'tool_search',
-  description: '获取延迟工具的完整定义。传入工具名（从系统提示的延迟工具列表中选取），返回该工具的完整参数 Schema',
-  parameters: {
-    type: 'object',
-    properties: {
-      query: { type: 'string', description: '工具名，如 "mcp__github__list_issues"。支持逗号分隔多个工具名' },
-    },
-    required: ['query'],
-    additionalProperties: false,
-  },
-  isConcurrencySafe: true,
-  isReadOnly: true,
-  execute: async ({ query }: { query: string }) => {
-    const results = registry.searchTools(query);
-    if (results.length === 0) return `没有找到匹配 "${query}" 的工具`;
-    console.log(`  找到匹配 "${query}" 的工具: ${results.map(t => t.name).join(', ')}`);
-    return results.map(t => ({
-      name: t.name,
-      description: t.description,
-      parameters: t.parameters,
-    }));
-  },
-};
-registry.register(...allTools, toolSearchTool);
+registry.register(...allTools);
+registry.register(createToolSearchTool(registry));
+
+// ── Memory ────────────────────────────────
+const memoryStore = new MemoryStore('.');
+memoryStore.init();
+registry.register(createMemoryTool(memoryStore));
 
 // MCP 实现选择：'handwritten' 或 'sdk'
 const MCP_IMPLEMENTATION = (process.env.MCP_IMPLEMENTATION || 'sdk').toLowerCase() as 'handwritten' | 'sdk';
@@ -105,11 +85,12 @@ async function connectMCP() {
   console.log(`  已注册 ${tools.length} 个 Mock MCP 工具`);
 }
 
-const rl = createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
-
+// ── Commands ────────────────────────────────
+const dispatch = createDispatcher([
+  ...debugCommands,
+  ...contextCommands,
+  ...memoryCommands,
+]);
 
 /** 
  * 这个压缩太简陋了，怎么简陋的？
@@ -138,18 +119,24 @@ async function autoCompact(messages: ModelMessage[], summary: string) {
 async function main() {
   await connectMCP();
 
+  const timestamps = new Map<number, number>();
+  let messages: ModelMessage[] = [];
+
+  // 预算由调用方持有，跨轮持续累计——agentLoop 只负责消费它
+  const budget: BudgetState = { used: 0, limit: 15000 };
+
   // Session 持久化
   const isContinue = process.argv.includes('--continue');
   const sessionId = 'default';
   const store = new SessionStore(sessionId);
-  const timestamps = new Map<number, number>();
+
+  const tracker = new UsageTracker('.usage/today.jsonl');
 
   if (isContinue && store.exists()) {
     messages = store.load();
     const firstTokens = estimateTokens(messages);
     console.log(`[Session] 恢复会话，${messages.length} 条历史消息， ~${firstTokens} tokens\n`);
   } else {
-    // injectFakeHistory(messages);
     console.log(`[Session] 新会话\n`);
   }
 
@@ -172,68 +159,26 @@ async function main() {
   messages = compactedMessages;
   summary = compactedSummary;
 
-  const deferredSummary = registry.getDeferredToolSummary();
-  const promptCtx: PromptContext = {
-    toolRegistry: registry,
-    deferredToolSummary: deferredSummary,
-    sessionMessageCount: messages.length,
-    sessionId,
-  };
   const builder = new PromptBuilder()
     .pipe('coreRules', coreRules())
     .pipe('toolGuide', toolGuide())
     .pipe('deferredTools', deferredTools())
     .pipe('strategies', strategies())
+    .pipe('memoryContext', () => memoryStore.buildPromptSection())
     .pipe('sessionContext', sessionContext());
 
-  const SYSTEM = builder.build(promptCtx);
-  console.log(`\n=== SYSTEM PROMPT ===`);
-  console.log(SYSTEM);
-  console.log(`=== SYSTEM PROMPT ===\n`);
-  builder.debug(promptCtx);  // 显示各模块状态
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
 
-  const allCount = registry.getAll().length;
-  const activeTools = registry.getActiveTools();
-  const estimate = registry.countTokenEstimate();
-
-  console.log(`\n=== 工具统计 ===`);
-  console.log(`  全部工具: ${allCount} 个`);
-  console.log(`  活跃工具: ${activeTools.length} 个`);
-  console.log(`  延迟工具: ${allCount - activeTools.length} 个`);
-  console.log(`  Token 估算: ~${estimate.active} (活跃) + ~${estimate.deferred} (延迟，不占 prompt)`);
-  // Quick triggers for demo
-  function handleQuickTrigger(cmd: string): boolean {
-    const now = Date.now();
-
-    if (cmd === '/status' || cmd === 'status') {
-      const tokens = estimateMessageTokens(messages);
-      const toolMsgs = messages.filter(m => m.role === 'tool').length;
-      console.log(`\n[状态] ${messages.length} 条消息 (${toolMsgs} 条工具结果), ~${tokens} tokens\n`);
-      return true;
-    }
-
-    // /context: 终端可视化的 context 占用，参考 Claude Code 的 /context
-    if (cmd === '/context' || cmd === 'context') {
-      const snapshot = buildContextSnapshot({
-        modelName: process.env.DEEPSEEK_API_KEY ? 'Deepseek V4 Flash' : 'Mock Model (开发用)',
-        modelId: process.env.DEEPSEEK_API_KEY ? 'deepseek-v4-flash' : 'mock-model',
-        windowTokens: 1_000_000,
-        systemPromptChars: SYSTEM.length,
-        toolDescriptionChars: registry.getActiveTools().reduce((a, t) => a + t.name.length + (t.description?.length || 0) + JSON.stringify(t.parameters || {}).length, 0),
-        memoryChars: 0,
-        skillsChars: 0,
-        messages,
-      });
-      console.log(renderContextView(snapshot));
-      return true;
-    }
-
-    if (cmd === '/usage' || cmd === 'usage') {
-      console.log(renderUsageView(tracker));
-      return true;
-    }
-
-    return false;
+  function makePromptCtx(): PromptContext {
+    return {
+      toolRegistry: registry,
+      deferredToolSummary: registry.getDeferredToolSummary(),
+      sessionMessageCount: messages.length,
+      sessionId,
+    };
   }
 
   function ask() {
@@ -245,10 +190,14 @@ async function main() {
         return;
       }
 
-      if (handleQuickTrigger(trimmed)) {
-        ask();
-        return;
-      }
+      const ctx: CommandContext = {
+        messages, timestamps, registry, builder, tracker,
+        sessionStore: store, model, makePromptCtx, ask,
+        memoryStore,
+      };
+      const handled = dispatch(trimmed, ctx);
+      if (handled === 'async') return;
+      if (handled) { ask(); return; }
 
       // Session 持久化
       const userMsg: ModelMessage = { role: 'user', content: trimmed };
@@ -267,10 +216,13 @@ async function main() {
       console.log(`  [结果] ~${before} → ~${def.tokenEstimate} tokens (节省 ${before - def.tokenEstimate})\n`);
       console.log(`====================\n`);
 
-      await agentLoop(model, registry, messages, SYSTEM, budget, tracker);
+      const currentSystem = builder.build(makePromptCtx());
+      await agentLoop(model, registry, messages, currentSystem, budget, tracker);
 
       // 持久化本轮新增的消息（agent loop 会往 messages 里 push assistant/tool 消息）
       const newMessages = messages.slice(beforeLen);
+      const now = Date.now();
+      for (let i = beforeLen; i < messages.length; i++) timestamps.set(i, now);
       store.appendAll(newMessages);
 
       const { messages: compactedMessages, summary: compactedSummary } = await autoCompact(messages, summary);
@@ -281,8 +233,6 @@ async function main() {
     });
   }
 
-  console.log('Super Agent v0.7 — Session + Prompt Pipe (type "exit" to quit)');
-  console.log('对话会自动保存。用 pnpm run continue 恢复上次对话。\n');
   ask();
 }
 
