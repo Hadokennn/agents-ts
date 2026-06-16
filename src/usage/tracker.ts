@@ -1,5 +1,6 @@
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import type { ModelMessage } from 'ai';
 
 /**
  * 各家模型的 prompt cache 计费规则（单位：$ / 1M tokens，2026-05 数据）。
@@ -149,4 +150,126 @@ export function normalizeUsage(usage: any): StepUsage {
     cacheReadTokens: cacheRead,
     cacheWriteTokens: cacheWrite,
   };
+}
+
+/**
+ * 各家模型的 token 估算口径（token / 字符）。
+ *
+ * `chars / 4` 是 OpenAI 英文 BPE 的经验值，套到中文 / 别家模型都偏：token 数取决于
+ * tokenizer，而 tokenizer 按「家族」走（同一家不同型号词表一致）。所以这里按家族定义
+ * 一套权重、再映射到具体 model id —— 和 PRICE_TABLE 同构，按 id 查、缺省回落 mock。
+ *
+ * 口径来源（粗口径，足够支撑「够没够阈值」的触发判断；要精确就读 API 返回的真实 usage）：
+ * - DeepSeek 官方：英文 ~0.3 token/char、中文 ~0.6 token/char
+ * - GPT / Claude / Gemini 系 BPE：英文 ~0.27、中文 ~0.6（CJK 多为 1~2 token/字，混合取中值）
+ * 常数可用 .usage 的真实 total_tokens 反向校准。加新模型直接扩这张表。
+ */
+export interface TokenWeights {
+  cjk: number;        // 每个中日韩表意字符
+  ascii: number;      // 每个 ASCII 字符
+  other: number;      // 其他（标点 / emoji / 其它脚本）
+  perMessage: number; // 每条消息的固定结构开销（role 标签 / 分隔符）
+}
+
+const TW_DEEPSEEK: TokenWeights = { cjk: 0.6, ascii: 0.3,  other: 0.5, perMessage: 3 };
+const TW_BPE:      TokenWeights = { cjk: 0.6, ascii: 0.27, other: 0.5, perMessage: 3 };
+
+export const TOKEN_WEIGHTS: Record<string, TokenWeights> = {
+  'claude-opus-4-7':   TW_BPE,
+  'claude-sonnet-4-7': TW_BPE,
+  'claude-haiku-4-5':  TW_BPE,
+  'gpt-5-5':           TW_BPE,
+  'gpt-5':             TW_BPE,
+  'gemini-3-pro':      TW_BPE,
+  'gemini-3-flash':    TW_BPE,
+  'deepseek-v3-2':     TW_DEEPSEEK,
+  'deepseek-v4-flash': TW_DEEPSEEK,
+  'qwen3-6-plus':      TW_DEEPSEEK, // 国产中文 BPE，口径接近 DeepSeek
+  'kimi-k2-6':         TW_DEEPSEEK,
+  'doubao-2-0-pro':    TW_DEEPSEEK,
+  'mock-model':        TW_DEEPSEEK,
+};
+
+function isCjkCode(c: number): boolean {
+  return (c >= 0x4e00 && c <= 0x9fff)     // CJK 基本区
+    || (c >= 0x3400 && c <= 0x4dbf)       // 扩展 A
+    || (c >= 0x20000 && c <= 0x2a6df)     // 扩展 B（for...of 已合并 surrogate）
+    || (c >= 0x3000 && c <= 0x303f)       // CJK 标点
+    || (c >= 0xff00 && c <= 0xffef);      // 全角
+}
+
+/** 把一条消息的文本内容抽出来（string 内容 / parts 数组里的 text / 工具 output）。 */
+function messageText(msg: ModelMessage): string {
+  if (typeof msg.content === 'string') return msg.content;
+  if (!Array.isArray(msg.content)) return '';
+  let s = '';
+  for (const part of msg.content as any[]) {
+    if ('text' in part && typeof part.text === 'string') s += part.text;
+    else if ('output' in part) s += typeof part.output === 'string' ? part.output : JSON.stringify(part.output);
+  }
+  return s;
+}
+
+/** 按字符分桶估算一段文本的 token 数。model 决定权重，未知 model 回落 mock 口径。 */
+export function estimateTextTokens(text: string, model: string): number {
+  const w = TOKEN_WEIGHTS[model] ?? TOKEN_WEIGHTS['mock-model'];
+  let cjk = 0, ascii = 0, other = 0;
+  for (const ch of text) {
+    const c = ch.codePointAt(0)!;
+    if (c <= 0x7f) ascii++;
+    else if (isCjkCode(c)) cjk++;
+    else other++;
+  }
+  return Math.ceil(cjk * w.cjk + ascii * w.ascii + other * w.other);
+}
+
+/** 估算整个消息列表的 token 数（含每条消息的结构开销）。token 估算的唯一真相入口。 */
+export function estimateMessageTokens(messages: ModelMessage[], model: string): number {
+  const w = TOKEN_WEIGHTS[model] ?? TOKEN_WEIGHTS['mock-model'];
+  let total = 0;
+  for (const msg of messages) total += w.perMessage + estimateTextTokens(messageText(msg), model);
+  return total;
+}
+
+/**
+ * 各家模型的上下文窗口（tokens）。压缩阈值一律由「window × 比例」派生，告别魔法数。
+ *
+ * 课程内可调：把 WINDOW_OVERRIDE 设成数字，会强制所有模型用这个窗口，便于在短会话里
+ * 观察压缩触发；设 null 则用下面的真实值。（真实模型 128k+，短会话压缩自然很少触发。）
+ */
+const WINDOW_OVERRIDE: number | null = 4_000;
+
+export const CONTEXT_WINDOWS: Record<string, number> = {
+  'claude-opus-4-7':   200_000,
+  'claude-sonnet-4-7': 200_000,
+  'claude-haiku-4-5':  200_000,
+  'gpt-5-5':           400_000,
+  'gpt-5':             272_000,
+  'gemini-3-pro':      1_000_000,
+  'gemini-3-flash':    1_000_000,
+  'deepseek-v3-2':     128_000,
+  'deepseek-v4-flash': 128_000,
+  'qwen3-6-plus':      262_144,
+  'kimi-k2-6':         262_144,
+  'doubao-2-0-pro':    262_144,
+  'mock-model':        8_000,
+};
+
+/** 触发压缩的窗口占比（Claude Code 实际约 92%，这里留些余量）。 */
+export const COMPACT_TRIGGER_RATIO = 0.85;
+/** 低于窗口这个占比就别压——太小，省得白调一次 LLM。 */
+export const COMPACT_FLOOR_RATIO = 0.10;
+
+export function contextWindow(model: string): number {
+  return WINDOW_OVERRIDE ?? CONTEXT_WINDOWS[model] ?? CONTEXT_WINDOWS['mock-model'];
+}
+
+/** 触发压缩的 token 阈值 = window × COMPACT_TRIGGER_RATIO。 */
+export function compactTriggerTokens(model: string): number {
+  return Math.floor(contextWindow(model) * COMPACT_TRIGGER_RATIO);
+}
+
+/** 不值得压的下限 token 数 = window × COMPACT_FLOOR_RATIO。 */
+export function compactFloorTokens(model: string): number {
+  return Math.floor(contextWindow(model) * COMPACT_FLOOR_RATIO);
 }

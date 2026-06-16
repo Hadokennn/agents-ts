@@ -250,22 +250,6 @@ export class MemoryStore {
     if (fs.existsSync(p)) fs.unlinkSync(p);
   }
 
-  /** 从磁盘重建索引（按文件 mtime 旧→新，新鲜的在末尾），用于修复索引↔磁盘不一致（孤儿文件）。 */
-  reindex(): void {
-    this.init();
-    const items = fs.readdirSync(this.memoryDir)
-      .filter(f => f.endsWith('.md') && f !== INDEX_FILE)
-      .map(f => {
-        const p = path.join(this.memoryDir, f);
-        return { f, parsed: this.parseFrontmatter(fs.readFileSync(p, 'utf-8')), mtime: fs.statSync(p).mtimeMs };
-      })
-      .filter((x): x is { f: string; parsed: Omit<MemoryEntry, 'filePath'>; mtime: number } => x.parsed !== null)
-      .sort((a, b) => a.mtime - b.mtime);
-
-    const entries = items.map(x => `- [${x.parsed.name}](${x.f}) — ${x.parsed.description}`);
-    fs.writeFileSync(this.indexPath, [INDEX_HEADER, '', ...entries].join('\n') + '\n', 'utf-8');
-  }
-
   private parseFrontmatter(raw: string): Omit<MemoryEntry, 'filePath'> | null {
     const match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
     if (!match) return null;

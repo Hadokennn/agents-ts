@@ -1,6 +1,9 @@
 import { setCacheEnabled } from '../mock/mock-model.js';
-import { estimateMessageTokens, applyDefense } from '../context/defense.js';
-import type { CommandHandler } from './index.js';
+import { applyDefense } from '../context/defense.js';
+import { estimateMessageTokens } from '../usage/tracker.js';
+import type { CommandHandler, CommandContext } from './index.js';
+
+const modelId = (ctx: CommandContext) => (ctx.model as any)?.modelId ?? 'mock-model';
 
 export const debugCommands: CommandHandler[] = [
   (cmd, ctx) => {
@@ -20,15 +23,15 @@ export const debugCommands: CommandHandler[] = [
       ctx.messages.push({ role: 'assistant', content: [{ type: 'text' as const, text: `文件 file-${i}.ts 的内容已读取。` }] });
       ctx.timestamps.set(idx + 3, now - age);
     }
-    console.log(`[模拟完成] ${ctx.messages.length} 条消息, ~${estimateMessageTokens(ctx.messages)} tokens\n`);
+    console.log(`[模拟完成] ${ctx.messages.length} 条消息, ~${estimateMessageTokens(ctx.messages, modelId(ctx))} tokens\n`);
     return true;
   },
 
   (cmd, ctx) => {
     if (cmd !== '执行防线' && cmd !== 'defend') return false;
     console.log('\n--- 执行三层防线 ---');
-    const before = estimateMessageTokens(ctx.messages);
-    const def = applyDefense(ctx.messages, ctx.timestamps);
+    const before = estimateMessageTokens(ctx.messages, modelId(ctx));
+    const def = applyDefense(ctx.messages, ctx.timestamps, modelId(ctx));
     ctx.messages = def.messages;
     console.log(`  [Layer 2] 截断: ${def.truncated} 条, 预算清理: ${def.compacted} 条`);
     console.log(`  [Layer 3] 软修剪: ${def.softPruned}, 硬清除: ${def.hardPruned}`);
@@ -38,7 +41,7 @@ export const debugCommands: CommandHandler[] = [
 
   (cmd, ctx) => {
     if (cmd !== 'status' && cmd !== '/status') return false;
-    const tokens = estimateMessageTokens(ctx.messages);
+    const tokens = estimateMessageTokens(ctx.messages, modelId(ctx));
     const memCount = ctx.memoryStore?.list().length ?? 0;
     console.log(`\n[状态] ${ctx.messages.length} 条消息, ~${tokens} tokens, ${memCount} 条记忆\n`);
     return true;

@@ -1,4 +1,5 @@
 import type { ModelMessage } from 'ai';
+import { estimateMessageTokens, estimateTextTokens, contextWindow } from '../usage/tracker.js';
 
 // ── tool-result output 辅助 ──────────────────────────
 // AI SDK 的 tool-result.output 是结构体 { type:'text', value }，不是裸字符串。
@@ -36,7 +37,7 @@ export class TokenTracker {
 
   get status(): { tokens: number; percent: number; needsAction: boolean } {
     const tokens = this.estimatedTokens;
-    const percent = Math.round((tokens / CONTEXT_WINDOW) * 100);
+    const percent = Math.round((tokens / contextWindow('mock-model')) * 100);
     return {
       tokens,
       percent,
@@ -45,92 +46,72 @@ export class TokenTracker {
   }
 }
 
-// 模型上下文窗口（tokens）。之前误设成 100，导致截断预算只有 ~300 字符，
-// 任何对话都会被立刻全量压缩——和这里的 schema bug 叠加才必现崩溃。
-const CONTEXT_WINDOW = 20_000;
-
-export function estimateMessageTokens(messages: ModelMessage[]): number {
-  let chars = 0;
-  for (const msg of messages) {
-    if (typeof msg.content === 'string') {
-      chars += msg.content.length;
-    } else if (Array.isArray(msg.content)) {
-      for (const part of msg.content) {
-        if ('text' in part && typeof part.text === 'string') {
-          chars += part.text.length;
-        } else if ('output' in part) {
-          const out = typeof part.output === 'string'
-            ? part.output
-            : JSON.stringify(part.output);
-          chars += out.length;
-        }
-      }
-    }
-  }
-  // 4 chars per token, with 1.2x safety factor for Chinese
-  return Math.ceil((chars / 4) * 1.2);
-}
-
 // ── Layer 2: Dynamic Tool Result Truncation ──────────
 
 interface TruncationConfig {
-  maxSingleResult: number;
-  contextBudgetChars: number;
+  maxSingleResultTokens: number;
+  contextBudgetTokens: number;
 }
 
-const DEFAULT_TRUNCATION: TruncationConfig = {
-  maxSingleResult: Math.floor(CONTEXT_WINDOW * 0.5 * 2),   // 50% of window, 2 chars/token
-  contextBudgetChars: Math.floor(CONTEXT_WINDOW * 0.75 * 4), // 75% of window, 4 chars/token
-};
+// 截断预算直接按 token（window 本身就是 token）：单条结果 ≤ 50% window，所有工具结果合计 ≤ 75% window
+function truncationConfig(window: number): TruncationConfig {
+  return {
+    maxSingleResultTokens: Math.floor(window * 0.5),
+    contextBudgetTokens: Math.floor(window * 0.75),
+  };
+}
 
 export function truncateToolResults(
   messages: ModelMessage[],
-  config: TruncationConfig = DEFAULT_TRUNCATION,
+  model: string,
+  config: TruncationConfig = truncationConfig(contextWindow('mock-model')),
 ): { messages: ModelMessage[]; truncated: number; compacted: number } {
   let truncated = 0;
   let compacted = 0;
 
-  // Pass 1: single-result truncation (Head/Tail 60/40)
+  // 一条消息的 token 尺寸（工具 output 优先，退而取 text）
+  const sizeOf = (msg: ModelMessage): number => {
+    if (typeof msg.content === 'string') return estimateTextTokens(msg.content, model);
+    if (!Array.isArray(msg.content)) return 0;
+    return (msg.content as any[]).reduce(
+      (s, p) => s + estimateTextTokens(readOutputText(p.output) || (p.text as string) || '', model), 0,
+    );
+  };
+
+  // Pass 1: single-result truncation (Head/Tail 60/40)，按 token 量判断与裁剪
   let result = messages.map(msg => {
     if (msg.role !== 'tool' || !Array.isArray(msg.content)) return msg;
 
     const newContent = msg.content.map((part: any) => {
       const text = readOutputText(part.output);
-      if (text.length <= config.maxSingleResult) return part;
+      const tokens = estimateTextTokens(text, model);
+      if (tokens <= config.maxSingleResultTokens) return part;
 
       truncated++;
-      const maxChars = config.maxSingleResult;
-      const headSize = Math.floor(maxChars * 0.6);
-      const tailSize = Math.floor(maxChars * 0.4);
-      const head = text.slice(0, headSize);
-      const tail = text.slice(-tailSize);
+      // 用这段文本自己的真实密度把 token 预算换算成字符切点（自校准，无硬编码字符/token 系数）
+      const charsPerToken = text.length / Math.max(1, tokens);
+      const budgetChars = Math.floor(config.maxSingleResultTokens * charsPerToken);
+      const head = text.slice(0, Math.floor(budgetChars * 0.6));
+      const tail = text.slice(-Math.floor(budgetChars * 0.4));
 
       return {
         ...part,
-        output: textOutput(`${head}\n\n[truncated: ${text.length} → ${maxChars} chars]\n\n${tail}`),
+        output: textOutput(`${head}\n\n[truncated: ${tokens} → ~${config.maxSingleResultTokens} tokens]\n\n${tail}`),
       };
     });
 
     return { ...msg, content: newContent };
   });
 
-  // Pass 2: total budget enforcement — compact oldest tool results first
-  let totalChars = result.reduce((sum, msg) => {
-    if (typeof msg.content === 'string') return sum + msg.content.length;
-    if (Array.isArray(msg.content)) {
-      return sum + (msg.content as any[]).reduce((s, p) =>
-        s + (readOutputText(p.output).length || (p.text as string)?.length || 0), 0);
-    }
-    return sum;
-  }, 0);
+  // Pass 2: total budget enforcement — compact oldest tool results first（按 token 总量）
+  let totalTokens = result.reduce((sum, msg) => sum + sizeOf(msg), 0);
 
-  if (totalChars > config.contextBudgetChars) {
-    for (let i = 0; i < result.length && totalChars > config.contextBudgetChars; i++) {
+  if (totalTokens > config.contextBudgetTokens) {
+    for (let i = 0; i < result.length && totalTokens > config.contextBudgetTokens; i++) {
       const msg = result[i];
       if (msg.role !== 'tool' || !Array.isArray(msg.content)) continue;
       const toolName = ((msg.content as any[])[0])?.toolName || 'unknown';
-      const oldSize = (msg.content as any[]).reduce((s: number, p: any) =>
-        s + readOutputText(p.output).length, 0);
+      const oldSize = sizeOf(msg);
       result[i] = {
         ...msg,
         content: (msg.content as any[]).map((p: any) => ({
@@ -138,7 +119,7 @@ export function truncateToolResults(
           output: textOutput(`[compacted: ${toolName} output removed to free context]`),
         })),
       };
-      totalChars -= oldSize;
+      totalTokens -= oldSize;
       compacted++;
     }
   }
@@ -243,9 +224,10 @@ export interface DefenseResult {
 export function applyDefense(
   messages: ModelMessage[],
   timestamps: Map<number, number>,
+  model: string,
 ): DefenseResult {
-  // Layer 2: truncate oversized tool results
-  const trunc = truncateToolResults(messages);
+  // Layer 2: truncate oversized tool results（预算按 model 的 context window 派生）
+  const trunc = truncateToolResults(messages, model, truncationConfig(contextWindow(model)));
   let result = trunc.messages;
 
   // Layer 3: TTL prune old tool results
@@ -253,7 +235,7 @@ export function applyDefense(
   result = prune.messages;
 
   // Layer 1: estimate final token count
-  const tokenEstimate = estimateMessageTokens(result);
+  const tokenEstimate = estimateMessageTokens(result, model);
 
   return {
     messages: result,

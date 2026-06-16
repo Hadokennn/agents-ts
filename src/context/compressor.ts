@@ -1,73 +1,54 @@
 import { generateText, type ModelMessage } from 'ai';
-
-/**
- * Estimate token count
- * 英语大概 4 个字符就能占 1 token。 Math.ceil(str.length / 4)
- * 中文需要在这个基础上增加 1.2 倍的 token 数。 Math.ceil((str.length / 4) * 1.2)
- * 真实的汉字大概 2 个汉字就能占 1 token。
- * @param messages 
- * @returns tokens count
- */
-function estimateTokens(messages: ModelMessage[]): number {
-  let chars = 0;
-  for (const msg of messages) {
-    if (typeof msg.content === 'string') {
-      chars += msg.content.length;
-    } else if (Array.isArray(msg.content)) {
-      for (const part of msg.content) {
-        if ('text' in part && typeof part.text === 'string') {
-          chars += part.text.length;
-        } else if ('output' in part) {
-          chars += JSON.stringify(part.output).length;
-        }
-      }
-    }
-  }
-  return Math.ceil(chars / 4);
-}
+import { estimateMessageTokens, compactFloorTokens } from '../usage/tracker.js';
 
 // ── Layer 1: Microcompact ────────────────────────────
 
-const CLEARABLE_TOOLS = new Set([
-  'read_file', 'bash', 'grep', 'glob', 'list_directory',
-  'edit_file', 'write_file',
-]);
-const KEEP_RECENT_TOOL_RESULTS = 3;
+// 保留名单：这些工具的结果不自动清（结果短小或后续强依赖，清了得不偿失）。
+// 注意是「保留名单」不是「白名单」——默认清理任意工具，避免 web_fetch / MCP / memory
+// 等大输出因为不在白名单里而永远清不掉（旧实现的根因）。
+const PRESERVE_TOOLS = new Set<string>([]);
+const KEEP_RECENT_TOOL_RESULTS = 3;   // 最近 N 个工具结果一律保留，维持就近推理连贯
+const MIN_CLEAR_CHARS = 500;          // output 小于此长度不值得清，清了省不下多少还丢上下文
+
+function partOutputText(part: any): string {
+  if (!('output' in part)) return '';
+  return typeof part.output === 'string'
+    ? part.output
+    : (part.output?.value ?? JSON.stringify(part.output ?? ''));
+}
 
 export function microcompact(messages: ModelMessage[]): {
   messages: ModelMessage[];
   cleared: number;
 } {
   let cleared = 0;
-  const toolResultIndices: number[] = [];
 
+  // 收集所有工具结果消息的下标，最近 KEEP_RECENT_TOOL_RESULTS 个不动
+  const toolIdx: number[] = [];
   for (let i = 0; i < messages.length; i++) {
-    const msg = messages[i];
-    if (msg.role === 'tool' && Array.isArray(msg.content)) {
-      toolResultIndices.push(i);
-    }
+    if (messages[i].role === 'tool' && Array.isArray(messages[i].content)) toolIdx.push(i);
   }
-
-  const toClear = toolResultIndices.slice(
-    0, Math.max(0, toolResultIndices.length - KEEP_RECENT_TOOL_RESULTS)
-  );
+  const cutoff = Math.max(0, toolIdx.length - KEEP_RECENT_TOOL_RESULTS);
+  const toClear = new Set(toolIdx.slice(0, cutoff));
 
   const result = messages.map((msg, idx) => {
-    if (!toClear.includes(idx)) return msg;
-    if (msg.role !== 'tool' || !Array.isArray(msg.content)) return msg;
+    if (!toClear.has(idx) || msg.role !== 'tool' || !Array.isArray(msg.content)) return msg;
 
-    const toolName = (msg.content[0] as any)?.toolName || 'unknown';
-    if (!CLEARABLE_TOOLS.has(toolName)) return msg;
+    let changed = false;
+    const content = msg.content.map((part: any) => {
+      if (!('output' in part)) return part;
+      const toolName = part.toolName || 'unknown';
+      if (PRESERVE_TOOLS.has(toolName)) return part;        // 保留名单：跳过
+      const text = partOutputText(part);
+      if (text.length < MIN_CLEAR_CHARS) return part;        // 太小：不值得清
+      changed = true;
+      // output 必须保持结构体 { type:'text', value }，否则过不了 ModelMessage schema 校验。
+      // 留面包屑（工具名 + 原长度）而非全抹，给模型一个「这里曾有什么」的线索。
+      return { ...part, output: { type: 'text' as const, value: `[${toolName} 结果已清理，原 ${text.length} 字符]` } };
+    });
 
-    cleared++;
-    return {
-      ...msg,
-      content: msg.content.map((part: any) => ({
-        ...part,
-        // output 必须保持结构体 { type:'text', value }，不能写成裸字符串，否则过不了 ModelMessage schema 校验
-        output: { type: 'text' as const, value: '[tool result cleared]' },
-      })),
-    };
+    if (changed) cleared++;
+    return { ...msg, content };
   });
 
   return { messages: result, cleared };
@@ -100,7 +81,6 @@ const COMPRESS_PROMPT = `你是一个对话压缩系统。你的任务是把 Age
 - 不要写笼统的概述，只保留具体的、可操作的信息
 - 总长度控制在 800 字以内`;
 
-const CONTEXT_TOKEN_THRESHOLD = 300;
 const KEEP_RECENT_MESSAGES = 6;
 
 export interface CompactionResult {
@@ -114,8 +94,9 @@ export async function summarize(
   messages: ModelMessage[],
   existingSummary?: string,
 ): Promise<CompactionResult> {
-  const tokenEstimate = estimateTokens(messages);
-  if (tokenEstimate < CONTEXT_TOKEN_THRESHOLD || messages.length <= KEEP_RECENT_MESSAGES) {
+  const modelId = model?.modelId ?? 'mock-model';
+  const tokenEstimate = estimateMessageTokens(messages, modelId);
+  if (tokenEstimate < compactFloorTokens(modelId) || messages.length <= KEEP_RECENT_MESSAGES) {
     return { messages, summary: existingSummary || '', compressedCount: 0 };
   }
 
@@ -177,5 +158,3 @@ export async function summarize(
     return { messages, summary: existingSummary || '', compressedCount: 0 };
   }
 }
-
-export { estimateTokens };
