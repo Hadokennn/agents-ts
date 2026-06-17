@@ -3,9 +3,10 @@ import type { ToolDefinition } from './registry.js';
 import { chunkDocument } from '../rag/chunker.js';
 import { embed, type EmbeddingFn } from '../rag/embedder.js';
 import { VectorStore } from '../rag/store.js';
+import { SqliteVectorStore } from '../rag/sqlite-store.js';
 import { hybridSearch } from '../rag/search.js';
 
-export function createRagTools(vectorStore: VectorStore, embedFn: EmbeddingFn): ToolDefinition[] {
+export function createRagTools(vectorStore: SqliteVectorStore, embedFn: EmbeddingFn): ToolDefinition[] {
   const ragIngestTool: ToolDefinition = {
     name: 'rag_ingest',
     description: '将文档导入知识库。path 为文件路径，内容会被分块、向量化后存储。',

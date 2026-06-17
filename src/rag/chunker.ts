@@ -6,8 +6,8 @@ export interface Chunk {
     tokenEstimate: number;
 }
 
-const TARGET_TOKENS = 256;
-const CHARS_PER_TOKEN = 4;
+const TARGET_TOKENS = 256; // 生产常用 512 tokens，大概 1k 个字符
+const CHARS_PER_TOKEN = 1.6; // cjk 0.6 token/字符；ASCII 0.3 token/字符;
 const TARGET_CHARS = TARGET_TOKENS * CHARS_PER_TOKEN;
 
 // --- 文档切分 ---

@@ -17,11 +17,14 @@
     "@ai-sdk/openai": "^3.0.53",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "ai": "^6.0.161",
+    "better-sqlite3": "^12.11.1",
     "dotenv": "^17.4.2",
     "pnpm": "^11.0.8",
+    "sqlite-vec": "^0.1.9",
     "turndown": "^7.2.4"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.6.0",
     "@types/turndown": "^5.0.6",
     "tsx": "^4.21.0",

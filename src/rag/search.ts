@@ -1,5 +1,6 @@
 import { cosineSimilarity } from './embedder.js';
 import type { StoredChunk, VectorStore } from './store.js';
+import type { SqliteVectorStore } from './sqlite-store.js';
 import type { EmbeddingFn } from './embedder.js';
 import { embed } from './embedder.js';
 
@@ -16,7 +17,7 @@ const CANDIDATE_MULTIPLIER = 4;
 const MMR_LAMBDA = 0.7;  // 70% 看相关性，30% 看多样性
 
 export async function hybridSearch(
-  store: VectorStore,
+  store: SqliteVectorStore,
   embedFn: EmbeddingFn,
   query: string,
   topK: number = 5,

@@ -20,6 +20,7 @@ import { debugCommands } from './commands/debugger.js';
 import { contextCommands } from './commands/context.js';
 import { memoryCommands } from './commands/memory.js';
 import { VectorStore } from './rag/store.js';
+import { SqliteVectorStore } from './rag/sqlite-store.js';
 import { createMockEmbedder, createDashScopeEmbedder, embed } from './rag/embedder.js';
 import { createRagTools } from './tools/rag-tools.js';
 import { memoryContext, ragContext } from './context/prompt-pipes.js';
@@ -51,7 +52,8 @@ memoryStore.init();
 registry.register(createMemoryTool(memoryStore));
 
 // ── RAG ────────────────────────────────
-const vectorStore = new VectorStore();
+// const vectorStore = new VectorStore();
+const vectorStore = new SqliteVectorStore('knowledge.db');
 const embedFn = process.env.DASHSCOPE_API_KEY
   ? createDashScopeEmbedder(process.env.DASHSCOPE_API_KEY)
   : createMockEmbedder();
