@@ -19,6 +19,10 @@ import { createDispatcher, type CommandContext } from './commands/index.js';
 import { debugCommands } from './commands/debugger.js';
 import { contextCommands } from './commands/context.js';
 import { memoryCommands } from './commands/memory.js';
+import { VectorStore } from './rag/store.js';
+import { createMockEmbedder, createDashScopeEmbedder, embed } from './rag/embedder.js';
+import { createRagTools } from './tools/rag-tools.js';
+import { memoryContext, ragContext } from './context/prompt-pipes.js';
 
 // 预算由调用方持有，跨轮持续累计——agentLoop 只负责消费它
 const budget: BudgetState = { used: 0, limit: 15000 };
@@ -36,7 +40,7 @@ const model = process.env.DEEPSEEK_API_KEY
 // token 估算口径按 model 走（见 usage/tracker.ts 的 TOKEN_WEIGHTS）
 const MODEL_ID = (model as any)?.modelId ?? 'mock-model';
 
-// tools 注册
+// ── Tools ────────────────────────────────
 const registry = new ToolRegistry();
 registry.register(...allTools);
 registry.register(createToolSearchTool(registry));
@@ -45,6 +49,13 @@ registry.register(createToolSearchTool(registry));
 const memoryStore = new MemoryStore('.');
 memoryStore.init();
 registry.register(createMemoryTool(memoryStore));
+
+// ── RAG ────────────────────────────────
+const vectorStore = new VectorStore();
+const embedFn = process.env.DASHSCOPE_API_KEY
+  ? createDashScopeEmbedder(process.env.DASHSCOPE_API_KEY)
+  : createMockEmbedder();
+registry.register(...createRagTools(vectorStore, embedFn));
 
 // MCP 实现选择：'handwritten' 或 'sdk'
 const MCP_IMPLEMENTATION = (process.env.MCP_IMPLEMENTATION || 'sdk').toLowerCase() as 'handwritten' | 'sdk';
@@ -164,7 +175,8 @@ async function main() {
     .pipe('toolGuide', toolGuide())
     .pipe('deferredTools', deferredTools())
     .pipe('strategies', strategies())
-    .pipe('memoryContext', () => memoryStore.buildPromptSection())
+    .pipe('memoryContext', memoryContext(memoryStore))
+    .pipe('ragContext', ragContext(vectorStore))
     .pipe('sessionContext', sessionContext());
 
   const rl = createInterface({

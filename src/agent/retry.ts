@@ -1,6 +1,17 @@
 // --- 错误分类 ---
 
 export function isRetryable(error: unknown): boolean {
+  // 检查 Symbol 类型的 AI SDK 错误（如 AI_NoOutputGeneratedError）
+  if (error && typeof error === 'object') {
+    const symbols = Object.getOwnPropertySymbols(error);
+    for (const sym of symbols) {
+      if (String(sym).includes('AI_NoOutputGeneratedError') || 
+          String(sym).includes('NoOutputGeneratedError')) {
+        return true;
+      }
+    }
+  }
+
   if (!(error instanceof Error)) return false;
 
   const message = error.message || '';
