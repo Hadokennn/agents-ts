@@ -26,8 +26,8 @@ export async function agentLoop(
   registry: ToolRegistry,
   messages: ModelMessage[],
   system: string,
-  budget: BudgetState,
   tracker: UsageTracker,
+  budget?: BudgetState,
 ) {
   let step = 0;
   let totalTokens = 0;
@@ -155,10 +155,10 @@ export async function agentLoop(
       console.log(`\n[${tag}] ${detail} tokens · 本步 $${stepRecord.cost.toFixed(5)}`);
     }
 
-    if (totalTokens > budget?.limit * 0.9) {
-      console.log(`  [Token] ${totalTokens}/${budget?.limit} (${Math.round(totalTokens / budget?.limit * 100)}%)`);
+    if (totalTokens > (budget?.limit || 15000) * 0.9) {
+      console.log(`  [Token] ${totalTokens}/${budget?.limit || 15000} (${Math.round(totalTokens / (budget?.limit || 15000) * 100)}%)`);
     }
-    if (totalTokens > budget?.limit) {
+    if (totalTokens > (budget?.limit || 15000)) {
       console.log('\n[Token 预算耗尽]');
       break;
     }

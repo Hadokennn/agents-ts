@@ -19,6 +19,7 @@ import { createDispatcher, type CommandContext } from './commands/index.js';
 import { debugCommands } from './commands/debugger.js';
 import { contextCommands } from './commands/context.js';
 import { memoryCommands } from './commands/memory.js';
+import { dreamCommands } from './commands/dream.js';
 import { VectorStore } from './rag/store.js';
 import { SqliteVectorStore } from './rag/sqlite-store.js';
 import { createMockEmbedder, createDashScopeEmbedder, embed } from './rag/embedder.js';
@@ -108,6 +109,7 @@ const dispatch = createDispatcher([
   ...debugCommands,
   ...contextCommands,
   ...memoryCommands,
+  ...dreamCommands,
 ]);
 
 async function autoCompact(messages: ModelMessage[], summary: string) {
@@ -233,7 +235,7 @@ async function main() {
       }
 
       const currentSystem = builder.build(makePromptCtx());
-      await agentLoop(model, registry, messages, currentSystem, budget, tracker);
+      await agentLoop(model, registry, messages, currentSystem, tracker, budget);
 
       // 持久化本轮新增的消息（agent loop 会往 messages 里 push assistant/tool 消息）
       const newMessages = messages.slice(beforeLen);

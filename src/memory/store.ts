@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { ValidationReport, lintAll } from './validator.js';
+import { bm25Search, type SearchHit } from './search.js';
 
 export interface MemoryEntry {
   name: string;
@@ -7,6 +9,8 @@ export interface MemoryEntry {
   type: 'user' | 'feedback' | 'project' | 'reference';
   content: string;
   filePath: string;
+  lastWriteAt?: number;
+  lastReadAt?: number;
 }
 
 export interface DuplicateHit {
@@ -54,7 +58,7 @@ export class MemoryStore {
     }
   }
 
-  save(entry: Omit<MemoryEntry, 'filePath'>, opts: { force?: boolean } = {}): SaveResult {
+  save(entry: Omit<MemoryEntry, 'filePath' | 'lastWriteAt' | 'lastReadAt'>, opts: { force?: boolean } = {}): SaveResult {
     this.init();
     const slug = entry.name
       .toLowerCase()
@@ -62,6 +66,7 @@ export class MemoryStore {
       .replace(/^-|-$/g, '');
     const filename = `${entry.type}_${slug}.md`;
     const filePath = path.join(this.memoryDir, filename);
+    const now = Date.now();
     const isUpdate = fs.existsSync(filePath);
 
     // 新建文件时做去重检测；显式同名更新（filename 已存在）或 force=true 时跳过。
@@ -89,6 +94,8 @@ export class MemoryStore {
       `name: ${entry.name}`,
       `description: ${entry.description}`,
       `type: ${entry.type}`,
+      `lastWriteAt: ${now}`,
+      `lastReadAt: ${now}`,
       '---',
       '',
       entry.content,
@@ -132,6 +139,19 @@ export class MemoryStore {
     return evicted;
   }
 
+  private touchReadAt(filename: string): void {
+    const filePath = path.join(this.memoryDir, filename);
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const now = Date.now();
+    let updated: string;
+    if (/^lastReadAt:.*$/m.test(raw)) {
+      updated = raw.replace(/^lastReadAt:.*$/m, `lastReadAt: ${now}`);
+    } else {
+      updated = raw.replace(/^---\n/, `---\nlastReadAt: ${now}\n`);
+    }
+    fs.writeFileSync(filePath, updated, 'utf-8');
+  }
+
   list(): MemoryEntry[] {
     this.init();
     const entries: MemoryEntry[] = [];
@@ -149,13 +169,8 @@ export class MemoryStore {
     return entries;
   }
 
-  search(query: string): MemoryEntry[] {
-    const all = this.list();
-    const keywords = query.toLowerCase().split(/\s+/);
-    return all.filter(entry => {
-      const text = `${entry.name} ${entry.description} ${entry.content}`.toLowerCase();
-      return keywords.some(kw => text.includes(kw));
-    });
+  search(query: string, topK = 5): SearchHit[] {
+    return bm25Search(this.list(), query, topK);
   }
 
   loadIndex(): string {
@@ -167,6 +182,7 @@ export class MemoryStore {
   loadFile(filename: string): string | null {
     const filePath = path.join(this.memoryDir, filename);
     if (!fs.existsSync(filePath)) return null;
+    this.touchReadAt(filename);
     const raw = fs.readFileSync(filePath, 'utf-8');
     return raw.length > MAX_FILE_CHARS ? raw.slice(0, MAX_FILE_CHARS) + '\n...(已截断)' : raw;
   }
@@ -180,6 +196,11 @@ export class MemoryStore {
     const lines = indexContent.split('\n').filter(l => !l.includes(`(${filename})`));
     fs.writeFileSync(this.indexPath, lines.join('\n'), 'utf-8');
     return true;
+  }
+
+
+  lint(): ValidationReport[] {
+    return lintAll(this.list(), this.baseDir);
   }
 
   buildPromptSection(): string {
@@ -198,7 +219,11 @@ export class MemoryStore {
       index,
       '',
       '使用 memory 工具的 read 操作来读取具体记忆内容。',
-      '记忆是线索，不是事实——使用前先验证其准确性。',
+      '记忆使用原则：',
+      '- 记忆是线索，不是事实——使用前先用工具验证（read_file、grep 确认）',
+      '- 不存代码能推导的、git 能查的、文档已经写了的',
+      '- 只存对话中出现的、其他地方推导不出来的信息',
+      '',
       '保存前先看上面的索引：同主题已存在就用其 name 更新，不要新建重复文件。',
     ];
     return lines.join('\n');
@@ -270,6 +295,8 @@ export class MemoryStore {
       description: meta.description || '',
       type: meta.type as MemoryEntry['type'],
       content: match[2].trim(),
+      lastWriteAt: meta.lastWriteAt ? Number(meta.lastWriteAt) : undefined,
+      lastReadAt: meta.lastReadAt ? Number(meta.lastReadAt) : undefined,
     };
   }
 }

@@ -11,11 +11,33 @@ export const memoryCommands: CommandHandler[] = [
   },
 
   (cmd, ctx) => {
-    if (!cmd.startsWith('/memory search ')) return false;
-    const query = cmd.slice('/memory search '.length).trim();
-    const results = ctx.memoryStore!.search(query);
-    console.log(`\n[记忆搜索] "${query}" → ${results.length} 条结果`);
-    for (const e of results) console.log(`  [${e.type}] ${e.name} — ${e.description}`);
+    if (!cmd.startsWith('/memory search ') && !cmd.startsWith('搜记忆 ')) return false;
+    const query = cmd.replace(/^\/memory search |^搜记忆 /, '').trim();
+    const results = ctx.memoryStore!.search(query, 5);
+    if (results.length === 0) {
+      console.log(`\n[记忆搜索] 没有找到与 "${query}" 相关的记忆。\n`);
+      return true;
+    }
+    console.log(`\n[BM25 搜索] "${query}" → ${results.length} 条结果：`);
+    for (const h of results) {
+      console.log(`  [score=${h.score.toFixed(2)}] [${h.entry.type}] ${h.entry.name} — ${h.entry.description}`);
+    }
+    console.log('');
+    return true;
+  },
+
+  (cmd, ctx) => {
+    if (cmd !== '/lint' && cmd !== 'lint') return false;
+    const reports = ctx.memoryStore!.lint();
+    if (reports.length === 0) {
+      console.log('\n[lint] 记忆库健康，没有发现问题。\n');
+      return true;
+    }
+    console.log(`\n[lint] 记忆库 ${reports.length} 条有警告：`);
+    for (const r of reports) {
+      console.log(`  📁 ${r.entry.filePath.split('/').pop()}  [${r.entry.type}] ${r.entry.name}`);
+      for (const issue of r.issues) console.log(`     • ${issue.kind}: ${issue.message}`);
+    }
     console.log('');
     return true;
   },

@@ -1,4 +1,5 @@
 ---
+lastReadAt: 1782084366924
 name: tour_trace_project
 description: 游迹小程序项目描述，含AI能力需求和新增功能规划
 type: project

@@ -1,4 +1,5 @@
 ---
+lastReadAt: 1782084366581
 name: rednote_poet_picturebook
 description: 小红书账号项目：故事绘本模式讲诗人一生
 type: project

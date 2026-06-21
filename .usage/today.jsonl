@@ -227,3 +227,17 @@
 {"ts":1781680462609,"model":"deepseek-v4-flash","cost":0.0006336,"inputTokens":18,"outputTokens":167,"cacheReadTokens":2816,"cacheWriteTokens":0}
 {"ts":1781680548926,"model":"deepseek-v4-flash","cost":0.0005976,"inputTokens":18,"outputTokens":149,"cacheReadTokens":2816,"cacheWriteTokens":0}
 {"ts":1781680562500,"model":"deepseek-v4-flash","cost":0.0025934,"inputTokens":823,"outputTokens":738,"cacheReadTokens":2944,"cacheWriteTokens":0}
+{"ts":1781781187141,"model":"deepseek-v4-flash","cost":0.003016,"inputTokens":2870,"outputTokens":73,"cacheReadTokens":0,"cacheWriteTokens":0}
+{"ts":1781781188949,"model":"deepseek-v4-flash","cost":0.0007546,"inputTokens":271,"outputTokens":101,"cacheReadTokens":2816,"cacheWriteTokens":0}
+{"ts":1781781190690,"model":"deepseek-v4-flash","cost":0.0007852,"inputTokens":168,"outputTokens":155,"cacheReadTokens":3072,"cacheWriteTokens":0}
+{"ts":1781781193063,"model":"deepseek-v4-flash","cost":0.001355,"inputTokens":713,"outputTokens":161,"cacheReadTokens":3200,"cacheWriteTokens":0}
+{"ts":1781781194625,"model":"deepseek-v4-flash","cost":0.003996,"inputTokens":3470,"outputTokens":71,"cacheReadTokens":3840,"cacheWriteTokens":0}
+{"ts":1781781323514,"model":"deepseek-v4-flash","cost":0.002773,"inputTokens":2575,"outputTokens":35,"cacheReadTokens":1280,"cacheWriteTokens":0}
+{"ts":1781781727872,"model":"deepseek-v4-flash","cost":0.0007016,"inputTokens":236,"outputTokens":92,"cacheReadTokens":2816,"cacheWriteTokens":0}
+{"ts":1781998974710,"model":"deepseek-v4-flash","cost":0.002643,"inputTokens":2291,"outputTokens":176,"cacheReadTokens":0,"cacheWriteTokens":0}
+{"ts":1781998978713,"model":"deepseek-v4-flash","cost":0.0012382,"inputTokens":213,"outputTokens":391,"cacheReadTokens":2432,"cacheWriteTokens":0}
+{"ts":1781998981611,"model":"deepseek-v4-flash","cost":0.000928,"inputTokens":496,"outputTokens":88,"cacheReadTokens":2560,"cacheWriteTokens":0}
+{"ts":1782084136391,"model":"deepseek-v4-flash","cost":0.003202,"inputTokens":3052,"outputTokens":75,"cacheReadTokens":0,"cacheWriteTokens":0}
+{"ts":1782084362700,"model":"deepseek-v4-flash","cost":0.0007404000000000001,"inputTokens":108,"outputTokens":169,"cacheReadTokens":2944,"cacheWriteTokens":0}
+{"ts":1782084367274,"model":"deepseek-v4-flash","cost":0.00116,"inputTokens":130,"outputTokens":355,"cacheReadTokens":3200,"cacheWriteTokens":0}
+{"ts":1782084381598,"model":"deepseek-v4-flash","cost":0.0032844000000000003,"inputTokens":970,"outputTokens":978,"cacheReadTokens":3584,"cacheWriteTokens":0}

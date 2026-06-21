@@ -73,6 +73,12 @@ export function resetHistory(): void {
 
 // --- 检测器 ---
 
+/**
+ * 计算连续无进展的调用次数
+ * @param toolName 工具名称
+ * @param argsHash 参数哈希值
+ * @returns 连续无进展的调用次数
+ */
 function getNoProgressStreak(toolName: string, argsHash: string): number {
   let streak = 0;
   let lastResultHash: string | undefined;
@@ -87,6 +93,11 @@ function getNoProgressStreak(toolName: string, argsHash: string): number {
   return streak;
 }
 
+/**
+ * 计算连续交替调用的次数
+ * @param currentHash 当前参数哈希值
+ * @returns 连续交替调用的次数
+ */
 function getPingPongCount(currentHash: string): number {
   if (history.length < 3) return 0;
   const last = history[history.length - 1];
