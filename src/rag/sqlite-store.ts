@@ -35,27 +35,30 @@ export class SqliteVectorStore {
     `);
   }
 
-  add(chunk: Chunk, embedding: number[]): void {
-    const now = Date.now();
-    // 三表联动写入
-    this.db.prepare(`INSERT OR REPLACE INTO chunks
-      (id, text, source, chunk_index, embedding, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)`)
-      .run(chunk.id, chunk.text, chunk.source, chunk.index,
-           JSON.stringify(embedding), now);
-
-    this.db.prepare(`INSERT OR REPLACE INTO chunks_vec (id, embedding)
-      VALUES (?, ?)`)
-      .run(chunk.id, Buffer.from(new Float32Array(embedding).buffer));
-
-    this.db.prepare(`INSERT OR REPLACE INTO chunks_fts (id, text, source)
-      VALUES (?, ?, ?)`)
-      .run(chunk.id, chunk.text, chunk.source);
-  }
-
   addBatch(items: Array<{ chunk: Chunk; embedding: number[] }>): void {
     const tx = this.db.transaction(() => {
-      for (const { chunk, embedding } of items) this.add(chunk, embedding);
+      for (const { chunk, embedding } of items) {
+        const now = Date.now();
+        // 先删除旧记录（如果存在）
+        this.db.prepare('DELETE FROM chunks WHERE id = ?').run(chunk.id);
+        this.db.prepare('DELETE FROM chunks_vec WHERE id = ?').run(chunk.id);
+        this.db.prepare('DELETE FROM chunks_fts WHERE id = ?').run(chunk.id);
+        
+        // 三表联动写入
+        this.db.prepare(`INSERT INTO chunks
+          (id, text, source, chunk_index, embedding, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?)`)
+          .run(chunk.id, chunk.text, chunk.source, chunk.index,
+               JSON.stringify(embedding), now);
+
+        this.db.prepare(`INSERT INTO chunks_vec (id, embedding)
+          VALUES (?, ?)`)
+          .run(chunk.id, Buffer.from(new Float32Array(embedding).buffer));
+
+        this.db.prepare(`INSERT INTO chunks_fts (id, text, source)
+          VALUES (?, ?, ?)`)
+          .run(chunk.id, chunk.text, chunk.source);
+      }
     });
     tx();  // 事务批量写入，比逐条快很多
   }

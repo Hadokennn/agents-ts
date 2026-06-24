@@ -47,10 +47,14 @@ export async function embed(fn: EmbeddingFn, texts: string[]): Promise<number[][
   }
 
   if (uncached.length > 0) {
-    const vectors = await fn(uncached.map(u => u.text));
-    for (let i = 0; i < uncached.length; i++) {
-      results[uncached[i].idx] = vectors[i];
-      embedCache.set(uncached[i].text, vectors[i]);
+    const BATCH_SIZE = 10; // DashScope API 限制最多 10 个
+    for (let i = 0; i < uncached.length; i += BATCH_SIZE) {
+      const batch = uncached.slice(i, i + BATCH_SIZE);
+      const vectors = await fn(batch.map(u => u.text));
+      for (let j = 0; j < batch.length; j++) {
+        results[batch[j].idx] = vectors[j];
+        embedCache.set(batch[j].text, vectors[j]);
+      }
     }
   }
 

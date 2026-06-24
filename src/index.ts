@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import fs from 'node:fs';
 import { type ModelMessage } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createMockModel } from './mock/mock-model.js';
@@ -25,6 +26,7 @@ import { SqliteVectorStore } from './rag/sqlite-store.js';
 import { createMockEmbedder, createDashScopeEmbedder, embed } from './rag/embedder.js';
 import { createRagTools } from './tools/rag-tools.js';
 import { memoryContext, ragContext } from './context/prompt-pipes.js';
+import { chunkDocument } from './rag/chunker.js';
 
 // 预算由调用方持有，跨轮持续累计——agentLoop 只负责消费它
 const budget: BudgetState = { used: 0, limit: 15000 };
@@ -249,6 +251,33 @@ async function main() {
 
       ask();
     });
+  }
+
+  console.log('Super Agent v0.13 — Memory Maintenance (type "exit" to quit)');
+  console.log('快捷命令：');
+  console.log('  ingest <path>   — 导入文档到知识库');
+  console.log('  /rag            — 查看知识库状态');
+  console.log('  /memory         — 查看记忆（带 ⚠️ 标记）');
+  console.log('  /lint           — 扫描记忆库');
+  console.log('  /dream          — 记忆整理（lint → 清理 → 合并 → 报告）');
+  console.log('  /context        — context 占用矩阵');
+  console.log('  status          — 当前状态');
+  console.log('');
+
+  if (fs.existsSync('docs')) {
+    const files = fs.readdirSync('docs').filter(f => f.endsWith('.md'));
+    if (files.length > 0) {
+      console.log(`  发现 ${files.length} 个文档，自动导入知识库...`);
+      for (const f of files) {
+        const path = `docs/${f}`;
+        const text = fs.readFileSync(path, 'utf-8');
+        const chunks = chunkDocument(path, text);
+        const embeddings = await embed(embedFn, chunks.map(c => c.text));
+        vectorStore.addBatch(chunks.map((c, i) => ({ chunk: c, embedding: embeddings[i] })));
+        console.log(`    ${f} → ${chunks.length} 个片段`);
+      }
+      console.log(`  知识库就绪，共 ${vectorStore.size()} 个片段\n`);
+    }
   }
 
   ask();
