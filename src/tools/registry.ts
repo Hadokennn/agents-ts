@@ -113,6 +113,11 @@ export class ToolRegistry {
     return result;
   }
 
+  unregister(name: string): boolean {
+    this.discoveredTools.delete(name);
+    return this.tools.delete(name);
+  }
+  
   async registerMCPServer(
     serverName: string,
     client: MCPClientType | MockMCPClient,
