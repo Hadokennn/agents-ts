@@ -1,0 +1,21 @@
+{"id":"q001","query":"递归段落分块遇到超过目标大小的段落时怎么处理？","source":"chunking.md","goldenAnswer":"当单个段落超过目标大小时，递归段落分块会退化到按句子边界切分，以句号、问号、感叹号作为切点。","tags":["factoid"],"origin":"handwritten"}
+{"id":"q002","query":"固定大小分块最大的缺点是什么？","source":"chunking.md","goldenAnswer":"固定大小分块完全无视段落和句子边界，容易把一个完整的答案从中间切断。","tags":["factoid"],"origin":"handwritten"}
+{"id":"q003","query":"重叠分块为什么能降低答案被切断的概率？","source":"chunking.md","goldenAnswer":"重叠分块让相邻两个块共享一段内容，即使答案落在块的边界附近，也有更大概率被某一个块完整覆盖。","tags":["factoid"],"origin":"handwritten"}
+{"id":"q004","query":"为什么固定大小分块常被当作评测的负向对照？","source":"chunking.md","goldenAnswer":"一个设计良好的评测台，应当能把固定大小分块的检索质量排到所有策略的最底部。如果它没有垫底，往往说明评测本身有问题，而不是这个策略意外地好。","tags":["long-answer"],"origin":"handwritten"}
+{"id":"q005","query":"余弦相似度衡量的是什么，取值范围是多少？","source":"embedding.md","goldenAnswer":"余弦相似度衡量两个向量方向上的接近程度，取值范围在负一到正一之间，越接近一表示语义越相似。","tags":["factoid"],"origin":"handwritten"}
+{"id":"q006","query":"为什么不能用字符哈希向量来评估语义检索？","source":"embedding.md","goldenAnswer":"字符哈希向量只反映字面字符的分布，无法捕捉语义，因此分辨不出近义词，用它评估语义检索会得到无意义的结果。","tags":["long-answer"],"origin":"handwritten"}
+{"id":"q007","query":"向量化为什么几乎总要加一层缓存？","source":"embedding.md","goldenAnswer":"向量化通常要调用外部模型接口，既有网络延迟也有费用，因此工程上几乎总会加一层缓存：同一段文本只向量化一次，命中缓存就直接复用。","tags":["factoid"],"origin":"handwritten"}
+{"id":"q008","query":"混合检索是怎么融合两路结果的？","source":"retrieval.md","goldenAnswer":"混合检索把向量检索和关键词检索两路的分数分别归一化后加权求和，向量通常占较高权重，关键词占较低权重。","tags":["factoid"],"origin":"handwritten"}
+{"id":"q009","query":"BM25 里逆文档频率起什么作用？","source":"retrieval.md","goldenAnswer":"BM25 中的逆文档频率 IDF 让越稀有的词获得越高的权重，从而压低在所有文档中都频繁出现的常见词的影响。","tags":["factoid"],"origin":"handwritten"}
+{"id":"q010","query":"MMR 在挑选结果时平衡哪两个目标？","source":"retrieval.md","goldenAnswer":"最大边际相关性 MMR 在挑选结果时同时平衡相关性和多样性，避免返回内容高度重复的多个片段。","tags":["factoid"],"origin":"handwritten"}
+{"id":"q011","query":"Recall@k 和 Precision@k 有什么区别？","source":"evaluation.md","goldenAnswer":"Recall@k 衡量应该被检索回来的相关片段中有多少真的被检索回来了，关注的是查全；Precision@k 衡量检索回来的前 k 个片段中有多少是真正相关的，关注的是查准。","tags":["long-answer"],"origin":"handwritten"}
+{"id":"q012","query":"为什么检索评测要先于生成评测建立？","source":"evaluation.md","goldenAnswer":"检索评测属于组件级评测，确定性强、便宜、不需要大模型打分；生成评测属于端到端评测，需要大模型作为裁判，昂贵且有噪声。分块策略的好坏完全体现在检索层，因此应当先把检索评测建立起来。","tags":["long-answer"],"origin":"handwritten"}
+{"id":"q013","query":"MRR 指标反映的是什么？","source":"evaluation.md","goldenAnswer":"平均倒数排名 MRR 反映第一个相关结果排在多靠前的位置，第一个就命中得分为一，排在第二位得分为二分之一。","tags":["factoid"],"origin":"handwritten"}
+{"id":"q014","query":"答案截断率衡量的是什么失败模式？","source":"evaluation.md","goldenAnswer":"答案截断率衡量黄金答案被块边界拦腰切开的比例，没有任何单个块能完整覆盖答案，但相邻块拼接起来可以，这种情况就计为一次截断。","tags":["long-answer"],"origin":"handwritten"}
+{"id":"mh001","query":"切分粒度太大或太小，分别会带来什么检索问题？","source":"chunking.md","goldenAnswer":"切得太碎，一个完整的答案会被拆散到多个片段，召回时拿不全；切得太大，单个片段里混入大量无关内容，召回时噪声过多。","tags":["multi-hop"],"origin":"handwritten"}
+{"id":"mh002","query":"向量检索和关键词检索各自的盲区是什么，为什么要混合？","source":"retrieval.md","goldenAnswer":"纯向量检索擅长捕捉语义但可能漏掉精确的关键词匹配，纯关键词检索能精准命中术语却理解不了同义改写。","tags":["multi-hop"],"origin":"handwritten"}
+{"id":"mh003","query":"召回率高但结果排序很乱，会被哪个指标暴露出来？","source":"evaluation.md","goldenAnswer":"归一化折损累积增益 NDCG 则进一步考虑了多个相关结果各自的位置，越靠前的命中贡献越大，是更全面的排序质量指标。","tags":["multi-hop"],"origin":"handwritten"}
+{"id":"sw001","query":"作者认为走职业运动员这条路的成功率怎么样？","source":"swimming_blog.md","goldenAnswer":"职业运动员的路，99.9%是死路。","tags":["factoid"],"origin":"handwritten"}
+{"id":"sw002","query":"作者要求孩子每天练完游泳之后必须做什么？","source":"swimming_blog.md","goldenAnswer":"你可以每天练2小时，但晚上必须回来写作业。你的主业是大脑，副业是四肢。","tags":["factoid"],"origin":"handwritten"}
+{"id":"sw003","query":"名校在游泳特长背后真正看重的是哪些品质？","source":"swimming_blog.md","goldenAnswer":"他们要的是：Time Management（时间管理）+ Commitment（承诺）+ Team Spirit（团队精神）。","tags":["factoid"],"origin":"handwritten"}
+{"id":"sw004","query":"作者为什么更看重游泳锻炼出的意志力而不是运动员证书？","source":"swimming_blog.md","goldenAnswer":"这种“在绝望中保持节奏”的能力，才是他以后读DBA、进投行、管团队时，真正的护城河。证书会过期，意志力不会。","tags":["long-answer"],"origin":"handwritten"}

@@ -1,26 +1,31 @@
 import { cosineSimilarity } from './embedder.js';
-import type { StoredChunk, VectorStore } from './store.js';
-import type { SqliteVectorStore } from './sqlite-store.js';
+import type { StoredChunk } from './store.js';
 import type { EmbeddingFn } from './embedder.js';
 import { embed } from './embedder.js';
+import type { FusionStrategy, SearchResult } from './fusion/types.js';
+import { WeightedScoreFusion } from './fusion/weighted-score.js';
 
-export interface SearchResult {
-  chunk: StoredChunk;
-  score: number;
-  vectorScore: number;
-  keywordScore: number;
+// hybridSearch 只依赖 getAll()，结构化类型让内存 VectorStore 与 SqliteVectorStore 都能传入
+// （评测用内存索引复用同一套检索逻辑，不污染 knowledge.db）。
+export interface RetrievalStore {
+  getAll(): StoredChunk[];
 }
 
-const VECTOR_WEIGHT = 0.7;
-const KEYWORD_WEIGHT = 0.3;
+// SearchResult 已下沉到 fusion/types.ts；在此再导出，保持历史导入路径不变。
+export type { SearchResult };
+
 const CANDIDATE_MULTIPLIER = 4;
 const MMR_LAMBDA = 0.7;  // 70% 看相关性，30% 看多样性
 
+// 默认融合策略 = 加权分数（参数为历史常量 0.7/0.3），行为零变更。
+const defaultFusion = new WeightedScoreFusion();
+
 export async function hybridSearch(
-  store: SqliteVectorStore,
+  store: RetrievalStore,
   embedFn: EmbeddingFn,
   query: string,
   topK: number = 5,
+  fusion: FusionStrategy = defaultFusion,
 ): Promise<SearchResult[]> {
   const all = store.getAll();
   if (all.length === 0) return [];
@@ -43,44 +48,9 @@ export async function hybridSearch(
     .sort((a, b) => b.score - a.score)
     .slice(0, candidateCount);
 
-  // Normalize scores to [0, 1]
-  const vecNorm = normalizeMinMax(vectorResults.map(r => r.score));
-  const kwNorm = normalizeViaSigmoid(keywordResults.map(r => r.score));
-
-  // Merge into unified candidate set
-  const candidates = new Map<string, SearchResult>();
-
-  for (let i = 0; i < vectorResults.length; i++) {
-    const id = vectorResults[i].chunk.id;
-    candidates.set(id, {
-      chunk: vectorResults[i].chunk,
-      score: vecNorm[i] * VECTOR_WEIGHT,
-      vectorScore: vecNorm[i],
-      keywordScore: 0,
-    });
-  }
-
-  for (let i = 0; i < keywordResults.length; i++) {
-    const id = keywordResults[i].chunk.id;
-    const existing = candidates.get(id);
-    if (existing) {
-      existing.keywordScore = kwNorm[i];
-      existing.score += kwNorm[i] * KEYWORD_WEIGHT;
-    } else {
-      candidates.set(id, {
-        chunk: keywordResults[i].chunk,
-        score: kwNorm[i] * KEYWORD_WEIGHT,
-        vectorScore: 0,
-        keywordScore: kwNorm[i],
-      });
-    }
-  }
-
-  // Sort by combined score
-  const sorted = [...candidates.values()].sort((a, b) => b.score - a.score);
-
-  // MMR deduplication
-  return mmrSelect(sorted, topK);
+  // 融合两路（默认加权分数；可传入 RRF 等对照策略），再做 MMR 去重
+  const fused = fusion.fuse(vectorResults, keywordResults);
+  return mmrSelect(fused, topK);
 }
 
 // ── BM25 scoring ──────────────────────────
@@ -90,7 +60,7 @@ export async function hybridSearch(
  * @param text 待分词的文本
  * @returns 分词后的字符串数组
  */
-function tokenize(text: string): string[] {
+export function tokenize(text: string): string[] {
   return text.toLowerCase()
     .replace(/[^\w一-鿿]+/g, ' ')
     .split(/\s+/)
@@ -128,36 +98,6 @@ function bm25Score(queryTerms: string[], docText: string, N: number, allDocs: St
   }
 
   return score;
-}
-
-// ── Normalization ──────────────────────────
-
-/**
- * 对分数数组进行归一化，将所有分数映射到 [0, 1] 范围内
- * @param scores 待归一化的分数数组
- * @returns 归一化后的分数数组
- * 原始分数: [10, 20, 30]
- * min=10, max=30, range=20
- * 归一化后: [(10-10)/20=0, (20-10)/20=0.5, (30-10)/20=1] → [0, 0.5, 1]
- */
-function normalizeMinMax(scores: number[]): number[] {
-  if (scores.length === 0) return [];
-  const min = Math.min(...scores);
-  const max = Math.max(...scores);
-  const range = max - min || 1;
-  return scores.map(s => (s - min) / range);
-}
-
-/**
- * 对分数数组进行归一化，将所有分数映射到 [0, 1] 范围内
- * @param scores 待归一化的分数数组
- * @returns 归一化后的分数数组
- * 待归一化的分数: [10, 20, 30]
- * 归一化后: [0.2689414213, 0.7310585787, 0.9999999999] → [0.269, 0.731, 0.999]
- * 归一化后的分数数组，每个分数都介于 0 和 1 之间，且总和为 1
- */
-function normalizeViaSigmoid(scores: number[]): number[] {
-  return scores.map(s => 1 / (1 + Math.exp(-s)));
 }
 
 // ── MMR deduplication MMR（Maximal Marginal Relevance）在选结果时兼顾相关性和多样性 ──────────────────────

@@ -1,0 +1,400 @@
+{
+  "embedder": "dashscope",
+  "embedderModel": "text-embedding-v3",
+  "topK": 5,
+  "tau": 0.6,
+  "corpusDocs": 5,
+  "chunkingCount": 4,
+  "fusionCount": 2,
+  "tagCounts": {
+    "factoid": 12,
+    "long-answer": 6,
+    "multi-hop": 3
+  },
+  "results": [
+    {
+      "chunking": "markdown-section",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6,
+        "includeBreadcrumb": true
+      },
+      "fusion": "weighted-score",
+      "fusionParams": {
+        "vectorWeight": 0.7,
+        "keywordWeight": 0.3
+      },
+      "metrics": {
+        "hitRate": 1,
+        "recall": 1,
+        "precision": 0.20000000000000004,
+        "mrr": 0.9285714285714286,
+        "ndcg": 0.9472756790816368
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.875,
+          "ndcg": 0.9077324383928644
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 1,
+          "ndcg": 1
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 1,
+          "ndcg": 1
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.7724730577891545,
+      "chunkCount": 22,
+      "avgChunkChars": 177,
+      "queryCount": 21
+    },
+    {
+      "chunking": "recursive-paragraph",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6
+      },
+      "fusion": "weighted-score",
+      "fusionParams": {
+        "vectorWeight": 0.7,
+        "keywordWeight": 0.3
+      },
+      "metrics": {
+        "hitRate": 1,
+        "recall": 1,
+        "precision": 0.20000000000000004,
+        "mrr": 0.9206349206349206,
+        "ndcg": 0.9410409289115674
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.9027777777777777,
+          "ndcg": 0.9275774794642881
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 1,
+          "ndcg": 1
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.8333333333333334,
+          "ndcg": 0.8769765845238192
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.452421290943043,
+      "chunkCount": 13,
+      "avgChunkChars": 292,
+      "queryCount": 21
+    },
+    {
+      "chunking": "fixed-size",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6
+      },
+      "fusion": "weighted-score",
+      "fusionParams": {
+        "vectorWeight": 0.7,
+        "keywordWeight": 0.3
+      },
+      "metrics": {
+        "hitRate": 0.9523809523809523,
+        "recall": 0.9523809523809523,
+        "precision": 0.19047619047619052,
+        "mrr": 0.896825396825397,
+        "ndcg": 0.9109966549319741
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 0.9166666666666666,
+          "recall": 0.9166666666666666,
+          "precision": 0.18333333333333332,
+          "mrr": 0.9166666666666666,
+          "ndcg": 0.9166666666666666
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.9166666666666666,
+          "ndcg": 0.9384882922619097
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.7777777777777777,
+          "ndcg": 0.8333333333333334
+        }
+      },
+      "splitRate": 0.047619047619047616,
+      "ctxEfficiency": 4.10593916723826,
+      "chunkCount": 12,
+      "avgChunkChars": 318,
+      "queryCount": 21
+    },
+    {
+      "chunking": "fixed-overlap",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "overlapTokens": 32,
+        "charsPerToken": 1.6
+      },
+      "fusion": "weighted-score",
+      "fusionParams": {
+        "vectorWeight": 0.7,
+        "keywordWeight": 0.3
+      },
+      "metrics": {
+        "hitRate": 1,
+        "recall": 1,
+        "precision": 0.20000000000000004,
+        "mrr": 0.8730158730158731,
+        "ndcg": 0.9058913816326586
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.875,
+          "ndcg": 0.9077324383928644
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.9166666666666666,
+          "ndcg": 0.9384882922619097
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.7777777777777777,
+          "ndcg": 0.8333333333333334
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.361052680009052,
+      "chunkCount": 12,
+      "avgChunkChars": 348,
+      "queryCount": 21
+    },
+    {
+      "chunking": "recursive-paragraph",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6
+      },
+      "fusion": "rrf",
+      "fusionParams": {
+        "k": 60,
+        "vectorWeight": 1,
+        "keywordWeight": 1
+      },
+      "metrics": {
+        "hitRate": 0.9523809523809523,
+        "recall": 0.9523809523809523,
+        "precision": 0.19047619047619052,
+        "mrr": 0.7238095238095239,
+        "ndcg": 0.7799588417596565
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 0.9166666666666666,
+          "recall": 0.9166666666666666,
+          "precision": 0.18333333333333332,
+          "mrr": 0.7361111111111112,
+          "ndcg": 0.7801127596788989
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.7555555555555555,
+          "ndcg": 0.8144754678724236
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.611111111111111,
+          "ndcg": 0.7103099178571526
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.3658873593248035,
+      "chunkCount": 13,
+      "avgChunkChars": 292,
+      "queryCount": 21
+    },
+    {
+      "chunking": "fixed-overlap",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "overlapTokens": 32,
+        "charsPerToken": 1.6
+      },
+      "fusion": "rrf",
+      "fusionParams": {
+        "k": 60,
+        "vectorWeight": 1,
+        "keywordWeight": 1
+      },
+      "metrics": {
+        "hitRate": 0.8571428571428571,
+        "recall": 0.8571428571428571,
+        "precision": 0.17142857142857149,
+        "mrr": 0.630952380952381,
+        "ndcg": 0.688304551064725
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 0.8333333333333334,
+          "recall": 0.8333333333333334,
+          "precision": 0.16666666666666666,
+          "mrr": 0.6597222222222222,
+          "ndcg": 0.7025563798394495
+        },
+        "long-answer": {
+          "hitRate": 0.8333333333333334,
+          "recall": 0.8333333333333334,
+          "precision": 0.16666666666666666,
+          "mrr": 0.5555555555555556,
+          "ndcg": 0.6269765845238192
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.6666666666666666,
+          "ndcg": 0.7539531690476383
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.382964586293583,
+      "chunkCount": 12,
+      "avgChunkChars": 348,
+      "queryCount": 21
+    },
+    {
+      "chunking": "fixed-size",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6
+      },
+      "fusion": "rrf",
+      "fusionParams": {
+        "k": 60,
+        "vectorWeight": 1,
+        "keywordWeight": 1
+      },
+      "metrics": {
+        "hitRate": 0.8571428571428571,
+        "recall": 0.8571428571428571,
+        "precision": 0.17142857142857149,
+        "mrr": 0.6246031746031746,
+        "ndcg": 0.6829165895044651
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 0.9166666666666666,
+          "recall": 0.9166666666666666,
+          "precision": 0.18333333333333332,
+          "mrr": 0.701388888888889,
+          "ndcg": 0.7551338593037377
+        },
+        "long-answer": {
+          "hitRate": 0.8333333333333334,
+          "recall": 0.8333333333333334,
+          "precision": 0.16666666666666666,
+          "mrr": 0.6166666666666667,
+          "ndcg": 0.6696304268009999
+        },
+        "multi-hop": {
+          "hitRate": 0.6666666666666666,
+          "recall": 0.6666666666666666,
+          "precision": 0.13333333333333333,
+          "mrr": 0.3333333333333333,
+          "ndcg": 0.420619835714305
+        }
+      },
+      "splitRate": 0.047619047619047616,
+      "ctxEfficiency": 4.118422673893815,
+      "chunkCount": 12,
+      "avgChunkChars": 318,
+      "queryCount": 21
+    },
+    {
+      "chunking": "markdown-section",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6,
+        "includeBreadcrumb": true
+      },
+      "fusion": "rrf",
+      "fusionParams": {
+        "k": 60,
+        "vectorWeight": 1,
+        "keywordWeight": 1
+      },
+      "metrics": {
+        "hitRate": 0.7619047619047619,
+        "recall": 0.7619047619047619,
+        "precision": 0.15238095238095242,
+        "mrr": 0.5476190476190477,
+        "ndcg": 0.6011053630137954
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 0.75,
+          "recall": 0.75,
+          "precision": 0.15,
+          "mrr": 0.5763888888888888,
+          "ndcg": 0.619223046506116
+        },
+        "long-answer": {
+          "hitRate": 0.6666666666666666,
+          "recall": 0.6666666666666666,
+          "precision": 0.13333333333333333,
+          "mrr": 0.47222222222222227,
+          "ndcg": 0.5218216255952429
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.5833333333333334,
+          "ndcg": 0.6872021038816168
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 5.1483977704363655,
+      "chunkCount": 22,
+      "avgChunkChars": 177,
+      "queryCount": 21
+    }
+  ]
+}

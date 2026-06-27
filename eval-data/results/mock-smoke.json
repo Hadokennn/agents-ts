@@ -1,0 +1,27 @@
+{
+  "embedder": "mock",
+  "embedderModel": "mock-charhash",
+  "topK": 5,
+  "tau": 0.6,
+  "corpusDocs": 4,
+  "results": [
+    {
+      "name": "recursive-paragraph",
+      "params": {
+        "targetTokens": 256
+      },
+      "metrics": {
+        "hitRate": 1,
+        "recall": 1,
+        "precision": 0.2,
+        "mrr": 1,
+        "ndcg": 1
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.6,
+      "chunkCount": 10,
+      "avgChunkChars": 295,
+      "queryCount": 14
+    }
+  ]
+}

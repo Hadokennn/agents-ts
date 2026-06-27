@@ -32,6 +32,7 @@ import { createSkillCommands } from './commands/skill.js';
 import { PluginManager } from './plugins/manager.js';
 import { supabasePlugin } from './plugins/supabase-plugin.js';
 import { createPluginCommands } from './commands/plugin.js';
+import { createEvalCommands } from './commands/eval.js';
 import type { PluginDefinition } from './plugins/types.js';
 
 // 预算由调用方持有，跨轮持续累计——agentLoop 只负责消费它
@@ -63,9 +64,12 @@ registry.register(createMemoryTool(memoryStore));
 // ── RAG ────────────────────────────────
 // const vectorStore = new VectorStore();
 const vectorStore = new SqliteVectorStore('knowledge.db');
-const embedFn = process.env.DASHSCOPE_API_KEY
-  ? createDashScopeEmbedder(process.env.DASHSCOPE_API_KEY)
+const useRealEmbedder = !!process.env.DASHSCOPE_API_KEY;
+const embedFn = useRealEmbedder
+  ? createDashScopeEmbedder(process.env.DASHSCOPE_API_KEY!)
   : createMockEmbedder();
+const embedderKind: 'mock' | 'dashscope' = useRealEmbedder ? 'dashscope' : 'mock';
+const embedderModel = useRealEmbedder ? 'text-embedding-v3' : 'mock-charhash';
 registry.register(...createRagTools(vectorStore, embedFn));
 
 // MCP 实现选择：'handwritten' 或 'sdk'
@@ -131,6 +135,7 @@ const dispatch = createDispatcher([
   ...dreamCommands,
   ...createSkillCommands(skillLoader, activeSkills),
   ...createPluginCommands(pluginManager, availablePlugins),
+  ...createEvalCommands(embedFn, embedderKind, embedderModel),
 ]);
 
 async function autoCompact(messages: ModelMessage[], summary: string) {

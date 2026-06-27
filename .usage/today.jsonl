@@ -246,3 +246,11 @@
 {"ts":1782085402808,"model":"deepseek-v4-flash","cost":0.0005922000000000001,"inputTokens":33,"outputTokens":126,"cacheReadTokens":3072,"cacheWriteTokens":0}
 {"ts":1782087418517,"model":"deepseek-v4-flash","cost":0.003015,"inputTokens":2883,"outputTokens":66,"cacheReadTokens":0,"cacheWriteTokens":0}
 {"ts":1782087422993,"model":"deepseek-v4-flash","cost":0.0020254,"inputTokens":1097,"outputTokens":317,"cacheReadTokens":2944,"cacheWriteTokens":0}
+{"ts":1782350860712,"model":"deepseek-v4-flash","cost":0.00345,"inputTokens":3204,"outputTokens":123,"cacheReadTokens":0,"cacheWriteTokens":0}
+{"ts":1782350864514,"model":"deepseek-v4-flash","cost":0.002181,"inputTokens":1237,"outputTokens":312,"cacheReadTokens":3200,"cacheWriteTokens":0}
+{"ts":1782350898347,"model":"deepseek-v4-flash","cost":0.004925,"inputTokens":4695,"outputTokens":115,"cacheReadTokens":0,"cacheWriteTokens":0}
+{"ts":1782350902722,"model":"deepseek-v4-flash","cost":0.0022266,"inputTokens":1189,"outputTokens":282,"cacheReadTokens":4736,"cacheWriteTokens":0}
+{"ts":1782351493605,"model":"deepseek-v4-flash","cost":0.0022196,"inputTokens":1668,"outputTokens":199,"cacheReadTokens":1536,"cacheWriteTokens":0}
+{"ts":1782351498604,"model":"deepseek-v4-flash","cost":0.0023678,"inputTokens":1329,"outputTokens":353,"cacheReadTokens":3328,"cacheWriteTokens":0}
+{"ts":1782351677379,"model":"deepseek-v4-flash","cost":0.0036276,"inputTokens":3274,"outputTokens":100,"cacheReadTokens":1536,"cacheWriteTokens":0}
+{"ts":1782351683238,"model":"deepseek-v4-flash","cost":0.0020934,"inputTokens":961,"outputTokens":323,"cacheReadTokens":4864,"cacheWriteTokens":0}

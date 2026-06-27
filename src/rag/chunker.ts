@@ -1,71 +1,21 @@
-export interface Chunk {
-    id: string;
-    text: string;
-    source: string;
-    index: number;
-    tokenEstimate: number;
-}
+// import { RecursiveParagraphStrategy } from './strategies/recursive-paragraph.js';
+import { MarkdownSectionStrategy } from './strategies/markdown-section.js';
+import type { Chunk, ChunkWithSpan } from './strategies/types.js';
 
-const TARGET_TOKENS = 256; // 生产常用 512 tokens，大概 1k 个字符
-const CHARS_PER_TOKEN = 1.6; // cjk 0.6 token/字符；ASCII 0.3 token/字符;
-const TARGET_CHARS = TARGET_TOKENS * CHARS_PER_TOKEN;
+// Chunk 定义已下沉到 strategies/types.ts；在此再导出，保持历史导入路径不变
+// （store.ts / sqlite-store.ts 仍 `import { Chunk } from './chunker.js'`）。
+export type { Chunk };
 
-// --- 文档切分 ---
+// 默认分块策略 = Markdown 节点
+const defaultStrategy = new MarkdownSectionStrategy();
+
+// --- 文档切分（历史入口，签名与行为保持不变）---
+// 评测需要对比多种策略时，请直接实例化 strategies/ 下的策略类，而非走这里。
 export function chunkDocument(source: string, text: string): Chunk[] {
-    const paragraphs = text.split(/\n{2,}/);
-    const chunks: Chunk[] = [];
-    let current = '';
-    let idx = 0;
-
-    for (const para of paragraphs) {
-        const trimmed = para.trim();
-        if (!trimmed) continue;
-
-        // 当前缓冲区 + 新段落超过目标大小，先把缓冲区存下来
-        if (current.length + trimmed.length + 2 > TARGET_CHARS && current.length > 0) {
-            chunks.push(makeChunk(source, current.trim(), idx++));
-            current = '';
-        }
-
-        // 单个段落就超过目标大小，按句子切分
-        if (trimmed.length > TARGET_CHARS) {
-            // 先把当前缓冲区存下来
-            if (current.length > 0) {
-                chunks.push(makeChunk(source, current.trim(), idx++));
-                current = '';
-            }
-            // ... 按句子边界（句号、问号、感叹号）继续切分
-            const sentences = trimmed.split(/(?<=[。！？.!?])\s*/);
-            let sentBuf = '';
-            for (const sent of sentences) {
-                // 句子缓冲区 + 新句子超过目标大小，先把缓冲区存下来
-                if (sentBuf.length + sent.length + 1 > TARGET_CHARS && sentBuf.length > 0) {
-                    chunks.push(makeChunk(source, sentBuf.trim(), idx++));
-                    sentBuf = '';
-                }
-                sentBuf += (sentBuf ? ' ' : '') + sent;
-            }
-            if (sentBuf.trim()) {
-                current = sentBuf.trim();
-            }
-        } else {
-            current += (current ? '\n\n' : '') + trimmed;
-        }
-    }
-
-    if (current.trim()) {
-        chunks.push(makeChunk(source, current.trim(), idx++));
-    }
-
-    return chunks;
+  return defaultStrategy.chunk(source, text).map(stripSpan);
 }
 
-function makeChunk(source: string, text: string, index: number): Chunk {
-    return {
-        id: `${source}#${index}`,
-        text,
-        source,
-        index,
-        tokenEstimate: Math.ceil(text.length / CHARS_PER_TOKEN),
-    };
+// 剥掉评测专用的 span 两字段，使返回对象与历史输出逐字一致
+function stripSpan({ startOffset, endOffset, ...chunk }: ChunkWithSpan): Chunk {
+  return chunk;
 }
