@@ -5,6 +5,7 @@ import { embed, type EmbeddingFn } from '../rag/embedder.js';
 import { VectorStore } from '../rag/store.js';
 import { SqliteVectorStore } from '../rag/sqlite-store.js';
 import { hybridSearch } from '../rag/search.js';
+import { WeightedScoreFusion } from '../rag/fusion/weighted-score.js';
 
 export function createRagTools(vectorStore: SqliteVectorStore, embedFn: EmbeddingFn): ToolDefinition[] {
   const ragIngestTool: ToolDefinition = {
@@ -47,7 +48,7 @@ export function createRagTools(vectorStore: SqliteVectorStore, embedFn: Embeddin
     isReadOnly: true,
     execute: async ({ query, top_k }: { query: string; top_k?: number }) => {
       if (vectorStore.size() === 0) return '知识库为空，请先使用 rag_ingest 导入文档。';
-      const results = await hybridSearch(vectorStore, embedFn, query, top_k || 5);
+      const results = await hybridSearch(vectorStore, embedFn, query, top_k || 5, new WeightedScoreFusion());
       if (results.length === 0) return `没有找到与 "${query}" 相关的内容。`;
       return results.map((r, i) =>
         `[${i + 1}] 来源: ${r.chunk.source} | 综合分: ${r.score.toFixed(3)} (向量: ${r.vectorScore.toFixed(2)}, 关键词: ${r.keywordScore.toFixed(2)})\n${r.chunk.text.slice(0, 500)}`
