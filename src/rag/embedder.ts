@@ -1,6 +1,9 @@
-const DIMS = 128;
+const DIMS = 1024;
 
 export type EmbeddingFn = (texts: string[]) => Promise<number[][]>;
+
+/** 可选的 embedder 实现：本地 GGUF / 云 API / 冒烟用字符哈希 */
+export type EmbedderKind = 'mock' | 'dashscope' | 'local';
 
 export function createMockEmbedder(): EmbeddingFn {
   return async (texts: string[]) => texts.map(mockEmbed);
@@ -29,6 +32,61 @@ export function createDashScopeEmbedder(apiKey: string): EmbeddingFn {
     const data = await resp.json() as any;
     return data.data.map((d: any) => d.embedding as number[]);
   };
+}
+
+export interface LocalEmbedderOptions {
+  /** GGUF 模型：HF URI（hf:repo/file）或本地 .gguf 路径。
+   *  默认 Qwen3-Embedding-0.6B（通义血统、中文强，text-embedding-v3 的本地等价物）。 */
+  model?: string;
+  /** 模型缓存目录，首次自动下载到此处（离线、免 HF token）。 */
+  cacheDir?: string;
+}
+
+/**
+ * 本地 embedding：用 node-llama-cpp 加载 GGUF 模型，离线、免 API key、数据不出本机。
+ * 输出经 MRL 截断 + L2 归一化到 DIMS 维，与现有向量库（DashScope 同维）兼容，可直接互换。
+ * 注意：不同模型向量空间不通用——切换 embedder 后需对整个语料重新 embed 建库。
+ *
+ * 用前先安装依赖：pnpm add node-llama-cpp
+ */
+export function createLocalEmbedder(options: LocalEmbedderOptions = {}): EmbeddingFn {
+  // 用 || 而非 ??：空字符串（如 .env 里 LOCAL_EMBED_MODEL=）也回落到默认，避免被当本地路径。
+  const modelUri =
+    options.model ||
+    'hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf';
+  const cacheDir = options.cacheDir || './models';
+
+  // 懒加载：首次调用时才下载/加载模型，避免启动开销与顶层 await；之后复用同一 context。
+  let ctxPromise: Promise<any> | null = null;
+  const getContext = () => {
+    if (!ctxPromise) {
+      ctxPromise = (async () => {
+        const { getLlama, resolveModelFile, LlamaLogLevel } = await import('node-llama-cpp');
+        const llama = await getLlama({ logLevel: LlamaLogLevel.error });                      // Mac 自动走 Metal
+        const modelPath = await resolveModelFile(modelUri, cacheDir);
+        const model = await llama.loadModel({ modelPath });
+        return model.createEmbeddingContext();
+      })();
+    }
+    return ctxPromise;
+  };
+
+  return async (texts: string[]) => {
+    const ctx = await getContext();
+    const out: number[][] = [];
+    for (const text of texts) {
+      const { vector } = await ctx.getEmbeddingFor(text);
+      out.push(truncateAndNormalize(Array.from(vector as Float32Array), DIMS));
+    }
+    return out;
+  };
+}
+
+/** MRL 截断到 dims 维并 L2 归一化（Qwen3-Embedding / EmbeddingGemma 均支持 Matryoshka 截断）。 */
+function truncateAndNormalize(vec: number[], dims: number): number[] {
+  const v = vec.slice(0, dims);
+  const norm = Math.sqrt(v.reduce((s, x) => s + x * x, 0)) || 1;
+  return v.map(x => x / norm);
 }
 
 const embedCache = new Map<string, number[]>();

@@ -1,0 +1,849 @@
+{
+  "embedder": "local",
+  "embedderModel": "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf",
+  "topK": 5,
+  "tau": 0.7,
+  "corpusDocs": 5,
+  "chunkingCount": 4,
+  "fusionCount": 2,
+  "rerankCount": 2,
+  "tagCounts": {
+    "factoid": 12,
+    "long-answer": 6,
+    "multi-hop": 3
+  },
+  "results": [
+    {
+      "chunking": "fixed-overlap",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "overlapTokens": 32,
+        "charsPerToken": 1.6
+      },
+      "fusion": "weighted-score",
+      "fusionParams": {
+        "vectorWeight": 0.7,
+        "keywordWeight": 0.3
+      },
+      "rerank": "qwen3-reranker-0.6b",
+      "rerankParams": {
+        "topN": 20,
+        "contextSize": 4096,
+        "blend": true
+      },
+      "metrics": {
+        "hitRate": 1,
+        "recall": 1,
+        "precision": 0.2190476190476191,
+        "mrr": 0.9761904761904762,
+        "ndcg": 0.9824252263605456
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.21666666666666667,
+          "mrr": 0.9583333333333334,
+          "ndcg": 0.9692441461309548
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.2333333333333333,
+          "mrr": 1,
+          "ndcg": 1
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 1,
+          "ndcg": 1
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.174482384880967,
+      "chunkCount": 12,
+      "avgChunkChars": 348,
+      "queryCount": 21
+    },
+    {
+      "chunking": "recursive-paragraph",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6
+      },
+      "fusion": "weighted-score",
+      "fusionParams": {
+        "vectorWeight": 0.7,
+        "keywordWeight": 0.3
+      },
+      "rerank": "none",
+      "rerankParams": {},
+      "metrics": {
+        "hitRate": 1,
+        "recall": 1,
+        "precision": 0.20000000000000004,
+        "mrr": 0.9523809523809523,
+        "ndcg": 0.9648504527210913
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.9583333333333334,
+          "ndcg": 0.9692441461309548
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 1,
+          "ndcg": 1
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.8333333333333334,
+          "ndcg": 0.8769765845238192
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.48709063851364,
+      "chunkCount": 13,
+      "avgChunkChars": 292,
+      "queryCount": 21
+    },
+    {
+      "chunking": "recursive-paragraph",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6
+      },
+      "fusion": "weighted-score",
+      "fusionParams": {
+        "vectorWeight": 0.7,
+        "keywordWeight": 0.3
+      },
+      "rerank": "qwen3-reranker-0.6b",
+      "rerankParams": {
+        "topN": 20,
+        "contextSize": 4096,
+        "blend": true
+      },
+      "metrics": {
+        "hitRate": 1,
+        "recall": 1,
+        "precision": 0.20000000000000004,
+        "mrr": 0.9523809523809523,
+        "ndcg": 0.9648504527210913
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.9583333333333334,
+          "ndcg": 0.9692441461309548
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 1,
+          "ndcg": 1
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.8333333333333334,
+          "ndcg": 0.8769765845238192
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.501908916554407,
+      "chunkCount": 13,
+      "avgChunkChars": 292,
+      "queryCount": 21
+    },
+    {
+      "chunking": "markdown-section",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6,
+        "includeBreadcrumb": true
+      },
+      "fusion": "weighted-score",
+      "fusionParams": {
+        "vectorWeight": 0.7,
+        "keywordWeight": 0.3
+      },
+      "rerank": "none",
+      "rerankParams": {},
+      "metrics": {
+        "hitRate": 1,
+        "recall": 1,
+        "precision": 0.20000000000000004,
+        "mrr": 0.9523809523809523,
+        "ndcg": 0.9648504527210913
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.9166666666666666,
+          "ndcg": 0.9384882922619097
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 1,
+          "ndcg": 1
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 1,
+          "ndcg": 1
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.623381368875577,
+      "chunkCount": 22,
+      "avgChunkChars": 177,
+      "queryCount": 21
+    },
+    {
+      "chunking": "markdown-section",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6,
+        "includeBreadcrumb": true
+      },
+      "fusion": "weighted-score",
+      "fusionParams": {
+        "vectorWeight": 0.7,
+        "keywordWeight": 0.3
+      },
+      "rerank": "qwen3-reranker-0.6b",
+      "rerankParams": {
+        "topN": 20,
+        "contextSize": 4096,
+        "blend": true
+      },
+      "metrics": {
+        "hitRate": 1,
+        "recall": 1,
+        "precision": 0.20000000000000004,
+        "mrr": 0.9523809523809523,
+        "ndcg": 0.9648504527210913
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.9166666666666666,
+          "ndcg": 0.9384882922619097
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 1,
+          "ndcg": 1
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 1,
+          "ndcg": 1
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.664392835900882,
+      "chunkCount": 22,
+      "avgChunkChars": 177,
+      "queryCount": 21
+    },
+    {
+      "chunking": "fixed-size",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6
+      },
+      "fusion": "weighted-score",
+      "fusionParams": {
+        "vectorWeight": 0.7,
+        "keywordWeight": 0.3
+      },
+      "rerank": "qwen3-reranker-0.6b",
+      "rerankParams": {
+        "topN": 20,
+        "contextSize": 4096,
+        "blend": true
+      },
+      "metrics": {
+        "hitRate": 1,
+        "recall": 1,
+        "precision": 0.20000000000000004,
+        "mrr": 0.9206349206349207,
+        "ndcg": 0.9410409289115674
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.9166666666666666,
+          "ndcg": 0.9384882922619097
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 1,
+          "ndcg": 1
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.7777777777777777,
+          "ndcg": 0.8333333333333334
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.148039142232899,
+      "chunkCount": 12,
+      "avgChunkChars": 318,
+      "queryCount": 21
+    },
+    {
+      "chunking": "fixed-size",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6
+      },
+      "fusion": "weighted-score",
+      "fusionParams": {
+        "vectorWeight": 0.7,
+        "keywordWeight": 0.3
+      },
+      "rerank": "none",
+      "rerankParams": {},
+      "metrics": {
+        "hitRate": 1,
+        "recall": 1,
+        "precision": 0.20000000000000004,
+        "mrr": 0.9087301587301587,
+        "ndcg": 0.9315050624592787
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.9027777777777778,
+          "ndcg": 0.9275774794642881
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 1,
+          "ndcg": 1
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.75,
+          "ndcg": 0.8102255193577976
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.133216092390394,
+      "chunkCount": 12,
+      "avgChunkChars": 318,
+      "queryCount": 21
+    },
+    {
+      "chunking": "fixed-overlap",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "overlapTokens": 32,
+        "charsPerToken": 1.6
+      },
+      "fusion": "weighted-score",
+      "fusionParams": {
+        "vectorWeight": 0.7,
+        "keywordWeight": 0.3
+      },
+      "rerank": "none",
+      "rerankParams": {},
+      "metrics": {
+        "hitRate": 1,
+        "recall": 1,
+        "precision": 0.2190476190476191,
+        "mrr": 0.9087301587301587,
+        "ndcg": 0.9315050624592787
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.21666666666666667,
+          "mrr": 0.9027777777777778,
+          "ndcg": 0.9275774794642881
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.2333333333333333,
+          "mrr": 1,
+          "ndcg": 1
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.75,
+          "ndcg": 0.8102255193577976
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.18178683756719,
+      "chunkCount": 12,
+      "avgChunkChars": 348,
+      "queryCount": 21
+    },
+    {
+      "chunking": "recursive-paragraph",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6
+      },
+      "fusion": "rrf",
+      "fusionParams": {
+        "k": 60,
+        "vectorWeight": 1,
+        "keywordWeight": 1
+      },
+      "rerank": "qwen3-reranker-0.6b",
+      "rerankParams": {
+        "topN": 20,
+        "contextSize": 4096,
+        "blend": true
+      },
+      "metrics": {
+        "hitRate": 1,
+        "recall": 1,
+        "precision": 0.20000000000000004,
+        "mrr": 0.8015873015873017,
+        "ndcg": 0.8516701014491723
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.8541666666666666,
+          "ndcg": 0.8910446721013591
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.6805555555555557,
+          "ndcg": 0.7602677186074751
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.8333333333333334,
+          "ndcg": 0.8769765845238192
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.5217885862375775,
+      "chunkCount": 13,
+      "avgChunkChars": 292,
+      "queryCount": 21
+    },
+    {
+      "chunking": "fixed-size",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6
+      },
+      "fusion": "rrf",
+      "fusionParams": {
+        "k": 60,
+        "vectorWeight": 1,
+        "keywordWeight": 1
+      },
+      "rerank": "qwen3-reranker-0.6b",
+      "rerankParams": {
+        "topN": 20,
+        "contextSize": 4096,
+        "blend": true
+      },
+      "metrics": {
+        "hitRate": 1,
+        "recall": 1,
+        "precision": 0.20000000000000004,
+        "mrr": 0.7738095238095238,
+        "ndcg": 0.8311616939218679
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.7986111111111112,
+          "ndcg": 0.8493780054346924
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.7222222222222222,
+          "ndcg": 0.793643251190486
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.7777777777777777,
+          "ndcg": 0.8333333333333334
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.101418805695074,
+      "chunkCount": 12,
+      "avgChunkChars": 318,
+      "queryCount": 21
+    },
+    {
+      "chunking": "fixed-overlap",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "overlapTokens": 32,
+        "charsPerToken": 1.6
+      },
+      "fusion": "rrf",
+      "fusionParams": {
+        "k": 60,
+        "vectorWeight": 1,
+        "keywordWeight": 1
+      },
+      "rerank": "qwen3-reranker-0.6b",
+      "rerankParams": {
+        "topN": 20,
+        "contextSize": 4096,
+        "blend": true
+      },
+      "metrics": {
+        "hitRate": 0.9523809523809523,
+        "recall": 0.9523809523809523,
+        "precision": 0.20952380952380958,
+        "mrr": 0.7619047619047619,
+        "ndcg": 0.8102858040001941
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 0.9166666666666666,
+          "recall": 0.9166666666666666,
+          "precision": 0.19999999999999998,
+          "mrr": 0.8333333333333334,
+          "ndcg": 0.8551549589285763
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.2333333333333333,
+          "mrr": 0.625,
+          "ndcg": 0.7205776364646277
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.75,
+          "ndcg": 0.8102255193577976
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.239702275670994,
+      "chunkCount": 12,
+      "avgChunkChars": 348,
+      "queryCount": 21
+    },
+    {
+      "chunking": "markdown-section",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6,
+        "includeBreadcrumb": true
+      },
+      "fusion": "rrf",
+      "fusionParams": {
+        "k": 60,
+        "vectorWeight": 1,
+        "keywordWeight": 1
+      },
+      "rerank": "qwen3-reranker-0.6b",
+      "rerankParams": {
+        "topN": 20,
+        "contextSize": 4096,
+        "blend": true
+      },
+      "metrics": {
+        "hitRate": 0.9047619047619048,
+        "recall": 0.9047619047619048,
+        "precision": 0.180952380952381,
+        "mrr": 0.7142857142857143,
+        "ndcg": 0.7615372795103926
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 0.8333333333333334,
+          "recall": 0.8333333333333334,
+          "precision": 0.16666666666666666,
+          "mrr": 0.7361111111111112,
+          "ndcg": 0.7609108127976215
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.6388888888888888,
+          "ndcg": 0.7268921860244643
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.7777777777777777,
+          "ndcg": 0.8333333333333334
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.788641624179402,
+      "chunkCount": 22,
+      "avgChunkChars": 177,
+      "queryCount": 21
+    },
+    {
+      "chunking": "recursive-paragraph",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6
+      },
+      "fusion": "rrf",
+      "fusionParams": {
+        "k": 60,
+        "vectorWeight": 1,
+        "keywordWeight": 1
+      },
+      "rerank": "none",
+      "rerankParams": {},
+      "metrics": {
+        "hitRate": 0.9523809523809523,
+        "recall": 0.9523809523809523,
+        "precision": 0.19047619047619052,
+        "mrr": 0.6896825396825397,
+        "ndcg": 0.755191949542846
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.7944444444444444,
+          "ndcg": 0.8457260261981214
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.6166666666666667,
+          "ndcg": 0.7132736779914858
+        },
+        "multi-hop": {
+          "hitRate": 0.6666666666666666,
+          "recall": 0.6666666666666666,
+          "precision": 0.13333333333333333,
+          "mrr": 0.4166666666666667,
+          "ndcg": 0.47689218602446437
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.409371639519085,
+      "chunkCount": 13,
+      "avgChunkChars": 292,
+      "queryCount": 21
+    },
+    {
+      "chunking": "fixed-size",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6
+      },
+      "fusion": "rrf",
+      "fusionParams": {
+        "k": 60,
+        "vectorWeight": 1,
+        "keywordWeight": 1
+      },
+      "rerank": "none",
+      "rerankParams": {},
+      "metrics": {
+        "hitRate": 0.9047619047619048,
+        "recall": 0.9047619047619048,
+        "precision": 0.180952380952381,
+        "mrr": 0.6865079365079365,
+        "ndcg": 0.742158348853842
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 0.8333333333333334,
+          "recall": 0.8333333333333334,
+          "precision": 0.16666666666666666,
+          "mrr": 0.6944444444444445,
+          "ndcg": 0.7301549589285763
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.625,
+          "ndcg": 0.7205776364646277
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.7777777777777777,
+          "ndcg": 0.8333333333333334
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.030090675001932,
+      "chunkCount": 12,
+      "avgChunkChars": 318,
+      "queryCount": 21
+    },
+    {
+      "chunking": "fixed-overlap",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "overlapTokens": 32,
+        "charsPerToken": 1.6
+      },
+      "fusion": "rrf",
+      "fusionParams": {
+        "k": 60,
+        "vectorWeight": 1,
+        "keywordWeight": 1
+      },
+      "rerank": "none",
+      "rerankParams": {},
+      "metrics": {
+        "hitRate": 0.9523809523809523,
+        "recall": 0.9047619047619048,
+        "precision": 0.19047619047619052,
+        "mrr": 0.696031746031746,
+        "ndcg": 0.7237367866045782
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 1,
+          "recall": 0.9583333333333334,
+          "precision": 0.19999999999999998,
+          "mrr": 0.7944444444444443,
+          "ndcg": 0.8134882922619097
+        },
+        "long-answer": {
+          "hitRate": 1,
+          "recall": 0.9166666666666666,
+          "precision": 0.19999999999999998,
+          "mrr": 0.625,
+          "ndcg": 0.656102168592204
+        },
+        "multi-hop": {
+          "hitRate": 0.6666666666666666,
+          "recall": 0.6666666666666666,
+          "precision": 0.13333333333333333,
+          "mrr": 0.4444444444444444,
+          "ndcg": 0.5
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.323777654985053,
+      "chunkCount": 12,
+      "avgChunkChars": 348,
+      "queryCount": 21
+    },
+    {
+      "chunking": "markdown-section",
+      "chunkingParams": {
+        "targetTokens": 256,
+        "charsPerToken": 1.6,
+        "includeBreadcrumb": true
+      },
+      "fusion": "rrf",
+      "fusionParams": {
+        "k": 60,
+        "vectorWeight": 1,
+        "keywordWeight": 1
+      },
+      "rerank": "none",
+      "rerankParams": {},
+      "metrics": {
+        "hitRate": 0.7619047619047619,
+        "recall": 0.7619047619047619,
+        "precision": 0.15238095238095242,
+        "mrr": 0.6150793650793651,
+        "ndcg": 0.6520255269150623
+      },
+      "byTag": {
+        "factoid": {
+          "hitRate": 0.75,
+          "recall": 0.75,
+          "precision": 0.15,
+          "mrr": 0.6527777777777778,
+          "ndcg": 0.6775774794642881
+        },
+        "long-answer": {
+          "hitRate": 0.6666666666666666,
+          "recall": 0.6666666666666666,
+          "precision": 0.13333333333333333,
+          "mrr": 0.4583333333333333,
+          "ndcg": 0.5102677186074751
+        },
+        "multi-hop": {
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.20000000000000004,
+          "mrr": 0.7777777777777777,
+          "ndcg": 0.8333333333333334
+        }
+      },
+      "splitRate": 0,
+      "ctxEfficiency": 4.856938817910411,
+      "chunkCount": 22,
+      "avgChunkChars": 177,
+      "queryCount": 21
+    }
+  ]
+}

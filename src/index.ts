@@ -23,8 +23,9 @@ import { memoryCommands } from './commands/memory.js';
 import { dreamCommands } from './commands/dream.js';
 import { VectorStore } from './rag/store.js';
 import { SqliteVectorStore } from './rag/sqlite-store.js';
-import { createMockEmbedder, createDashScopeEmbedder, embed } from './rag/embedder.js';
+import { createMockEmbedder, createDashScopeEmbedder, createLocalEmbedder, embed, type EmbedderKind } from './rag/embedder.js';
 import { createRagTools } from './tools/rag-tools.js';
+import { QwenReranker } from './rag/rerank/qwen-reranker.js';
 import { memoryContext, ragContext } from './context/prompt-pipes.js';
 import { chunkDocument } from './rag/chunker.js';
 import { SkillLoader } from './skills/loader.js';
@@ -62,15 +63,34 @@ memoryStore.init();
 registry.register(createMemoryTool(memoryStore));
 
 // ── RAG ────────────────────────────────
+// embedder 选择：EMBEDDER=local|dashscope|mock 显式优先；
+// 未设置时保持原行为——有 DASHSCOPE_API_KEY 用云，否则 mock。
+const embedderKind: EmbedderKind =
+  (process.env.EMBEDDER?.toLowerCase() as EmbedderKind | undefined) ??
+  (process.env.DASHSCOPE_API_KEY ? 'dashscope' : 'mock');
+const embedFn =
+  embedderKind === 'local'
+    ? createLocalEmbedder({ model: process.env.LOCAL_EMBED_MODEL })
+    : embedderKind === 'dashscope'
+      ? createDashScopeEmbedder(process.env.DASHSCOPE_API_KEY!)
+      : createMockEmbedder();
+const embedderModel =
+  embedderKind === 'local'
+    ? (process.env.LOCAL_EMBED_MODEL ?? 'Qwen3-Embedding-0.6B')
+    : embedderKind === 'dashscope'
+      ? 'text-embedding-v3'
+      : 'mock-charhash';
 // const vectorStore = new VectorStore();
-const vectorStore = new SqliteVectorStore('knowledge.db');
-const useRealEmbedder = !!process.env.DASHSCOPE_API_KEY;
-const embedFn = useRealEmbedder
-  ? createDashScopeEmbedder(process.env.DASHSCOPE_API_KEY!)
-  : createMockEmbedder();
-const embedderKind: 'mock' | 'dashscope' = useRealEmbedder ? 'dashscope' : 'mock';
-const embedderModel = useRealEmbedder ? 'text-embedding-v3' : 'mock-charhash';
-registry.register(...createRagTools(vectorStore, embedFn));
+// 把模型名传给 store：写入 chunks.model，并在库内混入异模型向量时告警。
+const vectorStore = new SqliteVectorStore('knowledge.db', embedderModel);
+// reranker 选择：RERANK=on 开启 cross-encoder 精排，RERANK=blend 额外启用位置加权混合；
+// 默认关闭（避免下载 ~640MB 模型与每次检索的额外延迟）。模型可用 RERANK_MODEL 覆盖。
+const rerankMode = process.env.RERANK?.toLowerCase();
+const reranker =
+  rerankMode && rerankMode !== 'off'
+    ? new QwenReranker({ model: process.env.RERANK_MODEL, blend: rerankMode === 'blend' })
+    : undefined;
+registry.register(...createRagTools(vectorStore, embedFn, reranker));
 
 // MCP 实现选择：'handwritten' 或 'sdk'
 const MCP_IMPLEMENTATION = (process.env.MCP_IMPLEMENTATION || 'sdk').toLowerCase() as 'handwritten' | 'sdk';

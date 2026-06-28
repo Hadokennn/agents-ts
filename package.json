@@ -19,6 +19,7 @@
     "ai": "^6.0.161",
     "better-sqlite3": "^12.11.1",
     "dotenv": "^17.4.2",
+    "node-llama-cpp": "^3.18.1",
     "pnpm": "^11.0.8",
     "sqlite-vec": "^0.1.9",
     "turndown": "^7.2.4"

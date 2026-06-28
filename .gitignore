@@ -3,3 +3,4 @@ build/
 .env
 .claude/
 node_modules/
+models/

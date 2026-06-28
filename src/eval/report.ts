@@ -7,9 +7,11 @@ const NAME_W = 40;
 const pct = (x: number) => (x * 100).toFixed(1).padStart(5);
 const eff = (x: number) => (Number.isFinite(x) ? x.toFixed(2) : '  ∞ ');
 
-// 单元标签 = 切分 × 融合（两根轴），参数留在 JSON 里
+// 单元标签 = 切分 × 融合（+ 重排，若启用），参数留在 JSON 里
 function label(r: MatrixCell): string {
-  return `${r.chunking} × ${r.fusion}`;
+  const base = `${r.chunking} × ${r.fusion}`;
+  if (!r.rerank || r.rerank === 'none') return base;
+  return `${base} ${r.rerankParams?.blend ? '+blend' : '+rerank'}`;
 }
 
 // 终端排行榜。mock embedder 下打出醒目护栏，提示结果仅供冒烟。
@@ -21,7 +23,7 @@ export function renderLeaderboard(report: EvalReport): string {
   }
   lines.push(
     `检索评测排行榜  embedder=${report.embedder}/${report.embedderModel}  ` +
-    `矩阵=${report.chunkingCount}切分×${report.fusionCount}融合  ` +
+    `矩阵=${report.chunkingCount}切分×${report.fusionCount}融合${report.rerankCount > 1 ? `×${report.rerankCount}重排` : ''}  ` +
     `topK=${report.topK}  τ=${report.tau}  语料=${report.corpusDocs}篇  查询=${report.results[0]?.queryCount ?? 0}条`,
   );
   lines.push('（NDCG/Recall/MRR/P@k/Hit 越高越好；Split截断率/CtxEff上下文效率 越低越好）');

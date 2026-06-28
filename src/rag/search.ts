@@ -4,6 +4,7 @@ import type { EmbeddingFn } from './embedder.js';
 import { embed } from './embedder.js';
 import type { FusionStrategy, SearchResult } from './fusion/types.js';
 import { WeightedScoreFusion } from './fusion/weighted-score.js';
+import type { RerankStrategy } from './rerank/types.js';
 
 // hybridSearch 只依赖 getAll()，结构化类型让内存 VectorStore 与 SqliteVectorStore 都能传入
 // （评测用内存索引复用同一套检索逻辑，不污染 knowledge.db）。
@@ -26,6 +27,7 @@ export async function hybridSearch(
   query: string,
   topK: number = 5,
   fusion: FusionStrategy = defaultFusion,
+  rerank?: RerankStrategy,  // 可选：传入则在融合后、MMR 前做 cross-encoder 精排
 ): Promise<SearchResult[]> {
   const all = store.getAll();
   if (all.length === 0) return [];
@@ -48,8 +50,16 @@ export async function hybridSearch(
     .sort((a, b) => b.score - a.score)
     .slice(0, candidateCount);
 
-  // 融合两路（默认加权分数；可传入 RRF 等对照策略），再做 MMR 去重
-  const fused = fusion.fuse(vectorResults, keywordResults);
+  // 融合两路（默认加权分数；可传入 RRF 等对照策略）
+  let fused = fusion.fuse(vectorResults, keywordResults);
+
+  // 可选：cross-encoder 精排。读 query+原文重算相关性，比召回/融合更准但贵，
+  // 故置于融合之后、只作用于头部候选；未传入则行为零变更。
+  if (rerank) {
+    fused = await rerank.rerank(query, fused);
+  }
+
+  // 再做 MMR 去重，兼顾相关性与多样性
   return mmrSelect(fused, topK);
 }
 
@@ -101,6 +111,13 @@ function bm25Score(queryTerms: string[], docText: string, N: number, allDocs: St
 }
 
 // ── MMR deduplication MMR（Maximal Marginal Relevance）在选结果时兼顾相关性和多样性 ──────────────────────
+
+//  mmrSelect，核心在：mmr = λ·relevance − (1−λ)·maxSim，λ=0.7。
+
+// - 思想：在"相关"和"不重复"之间权衡。纯按相关性取 topK，很容易返回 5 个几乎重复的 chunk（同一段话的不同切片）。MMR 贪心地每次挑"既跟 query 相关、又跟已选结果不雷同"的那个。
+// - 怎么算：从最相关的开一个头，之后每一步对剩余候选算 λ·自身相关性 − (1−λ)·与已选集合的最大相似度（你用 jaccard 词重叠衡量相似），挑分最高的。
+// - λ 旋钮：λ=1 → 纯相关性、不管多样性；λ=0 → 纯多样性。0.7 = 七分相关三分多样。
+// - 和 rerank 的协同：精排后 .score 变成了 cross-encoder 概率，所以现在 MMR 是在"cross-encoder 相关性 vs 多样性"之间权衡，比之前用融合分更准。
 
 /**
  * 对搜索结果数组进行MMR去重，返回 topK 个结果

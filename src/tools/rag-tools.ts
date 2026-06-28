@@ -6,8 +6,13 @@ import { VectorStore } from '../rag/store.js';
 import { SqliteVectorStore } from '../rag/sqlite-store.js';
 import { hybridSearch } from '../rag/search.js';
 import { WeightedScoreFusion } from '../rag/fusion/weighted-score.js';
+import type { RerankStrategy } from '../rag/rerank/types.js';
 
-export function createRagTools(vectorStore: SqliteVectorStore, embedFn: EmbeddingFn): ToolDefinition[] {
+export function createRagTools(
+  vectorStore: SqliteVectorStore,
+  embedFn: EmbeddingFn,
+  reranker?: RerankStrategy,
+): ToolDefinition[] {
   const ragIngestTool: ToolDefinition = {
     name: 'rag_ingest',
     description: '将文档导入知识库。path 为文件路径，内容会被分块、向量化后存储。',
@@ -48,11 +53,12 @@ export function createRagTools(vectorStore: SqliteVectorStore, embedFn: Embeddin
     isReadOnly: true,
     execute: async ({ query, top_k }: { query: string; top_k?: number }) => {
       if (vectorStore.size() === 0) return '知识库为空，请先使用 rag_ingest 导入文档。';
-      const results = await hybridSearch(vectorStore, embedFn, query, top_k || 5, new WeightedScoreFusion());
+      const results = await hybridSearch(vectorStore, embedFn, query, top_k || 5, new WeightedScoreFusion(), reranker);
       if (results.length === 0) return `没有找到与 "${query}" 相关的内容。`;
-      return results.map((r, i) =>
-        `[${i + 1}] 来源: ${r.chunk.source} | 综合分: ${r.score.toFixed(3)} (向量: ${r.vectorScore.toFixed(2)}, 关键词: ${r.keywordScore.toFixed(2)})\n${r.chunk.text.slice(0, 500)}`
-      ).join('\n\n---\n\n');
+      return results.map((r, i) => {
+        const rr = r.rerankScore !== undefined ? `, 重排: ${r.rerankScore.toFixed(2)}` : '';
+        return `[${i + 1}] 来源: ${r.chunk.source} | 综合分: ${r.score.toFixed(3)} (向量: ${r.vectorScore.toFixed(2)}, 关键词: ${r.keywordScore.toFixed(2)}${rr})\n${r.chunk.text.slice(0, 500)}`;
+      }).join('\n\n---\n\n');
     },
   };
 

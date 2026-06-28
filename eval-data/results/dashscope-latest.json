@@ -2,7 +2,7 @@
   "embedder": "dashscope",
   "embedderModel": "text-embedding-v3",
   "topK": 5,
-  "tau": 0.6,
+  "tau": 0.7,
   "corpusDocs": 5,
   "chunkingCount": 4,
   "fusionCount": 2,
@@ -119,19 +119,19 @@
         "keywordWeight": 0.3
       },
       "metrics": {
-        "hitRate": 0.9523809523809523,
-        "recall": 0.9523809523809523,
-        "precision": 0.19047619047619052,
-        "mrr": 0.896825396825397,
-        "ndcg": 0.9109966549319741
+        "hitRate": 1,
+        "recall": 1,
+        "precision": 0.20000000000000004,
+        "mrr": 0.9126984126984126,
+        "ndcg": 0.934806178741498
       },
       "byTag": {
         "factoid": {
-          "hitRate": 0.9166666666666666,
-          "recall": 0.9166666666666666,
-          "precision": 0.18333333333333332,
-          "mrr": 0.9166666666666666,
-          "ndcg": 0.9166666666666666
+          "hitRate": 1,
+          "recall": 1,
+          "precision": 0.19999999999999998,
+          "mrr": 0.9444444444444443,
+          "ndcg": 0.9583333333333334
         },
         "long-answer": {
           "hitRate": 1,
@@ -148,8 +148,8 @@
           "ndcg": 0.8333333333333334
         }
       },
-      "splitRate": 0.047619047619047616,
-      "ctxEfficiency": 4.10593916723826,
+      "splitRate": 0,
+      "ctxEfficiency": 4.085700818900252,
       "chunkCount": 12,
       "avgChunkChars": 318,
       "queryCount": 21
@@ -169,24 +169,24 @@
       "metrics": {
         "hitRate": 1,
         "recall": 1,
-        "precision": 0.20000000000000004,
+        "precision": 0.2190476190476191,
         "mrr": 0.8730158730158731,
-        "ndcg": 0.9058913816326586
+        "ndcg": 0.9000444918868514
       },
       "byTag": {
         "factoid": {
           "hitRate": 1,
           "recall": 1,
-          "precision": 0.19999999999999998,
+          "precision": 0.21666666666666667,
           "mrr": 0.875,
           "ndcg": 0.9077324383928644
         },
         "long-answer": {
           "hitRate": 1,
           "recall": 1,
-          "precision": 0.19999999999999998,
+          "precision": 0.2333333333333333,
           "mrr": 0.9166666666666666,
-          "ndcg": 0.9384882922619097
+          "ndcg": 0.9180241781515845
         },
         "multi-hop": {
           "hitRate": 1,
@@ -197,7 +197,7 @@
         }
       },
       "splitRate": 0,
-      "ctxEfficiency": 4.361052680009052,
+      "ctxEfficiency": 4.1635460812,
       "chunkCount": 12,
       "avgChunkChars": 348,
       "queryCount": 21
@@ -264,26 +264,26 @@
         "keywordWeight": 1
       },
       "metrics": {
-        "hitRate": 0.8571428571428571,
+        "hitRate": 0.9047619047619048,
         "recall": 0.8571428571428571,
-        "precision": 0.17142857142857149,
-        "mrr": 0.630952380952381,
+        "precision": 0.180952380952381,
+        "mrr": 0.6547619047619049,
         "ndcg": 0.688304551064725
       },
       "byTag": {
         "factoid": {
           "hitRate": 0.8333333333333334,
-          "recall": 0.8333333333333334,
+          "recall": 0.7916666666666666,
           "precision": 0.16666666666666666,
           "mrr": 0.6597222222222222,
-          "ndcg": 0.7025563798394495
+          "ndcg": 0.6703186459032375
         },
         "long-answer": {
-          "hitRate": 0.8333333333333334,
-          "recall": 0.8333333333333334,
-          "precision": 0.16666666666666666,
-          "mrr": 0.5555555555555556,
-          "ndcg": 0.6269765845238192
+          "hitRate": 1,
+          "recall": 0.9166666666666666,
+          "precision": 0.19999999999999998,
+          "mrr": 0.638888888888889,
+          "ndcg": 0.6914520523962429
         },
         "multi-hop": {
           "hitRate": 1,
@@ -294,7 +294,7 @@
         }
       },
       "splitRate": 0,
-      "ctxEfficiency": 4.382964586293583,
+      "ctxEfficiency": 4.383947468291936,
       "chunkCount": 12,
       "avgChunkChars": 348,
       "queryCount": 21
@@ -341,7 +341,7 @@
           "ndcg": 0.420619835714305
         }
       },
-      "splitRate": 0.047619047619047616,
+      "splitRate": 0,
       "ctxEfficiency": 4.118422673893815,
       "chunkCount": 12,
       "avgChunkChars": 318,

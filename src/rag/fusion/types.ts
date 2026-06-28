@@ -4,9 +4,10 @@ import type { StoredChunk } from '../store.js';
 // 打破 search.ts ←→ fusion 的循环依赖。score/vectorScore/keywordScore 为对外展示契约。
 export interface SearchResult {
   chunk: StoredChunk;
-  score: number;        // 融合后的综合分
+  score: number;        // 综合分：融合后的分数；若经过 rerank，则被精排概率覆盖
   vectorScore: number;  // 向量路对该结果的贡献（语义随融合策略而异）
   keywordScore: number; // 关键词路对该结果的贡献
+  rerankScore?: number; // cross-encoder 精排分（0-1 相关概率）；未精排时为 undefined
 }
 
 // 单路检索结果：已按原始 score 降序排列的 {chunk, 原始分} 列表
