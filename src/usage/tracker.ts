@@ -161,7 +161,7 @@ export function normalizeUsage(usage: any): StepUsage {
  *
  * 口径来源（粗口径，足够支撑「够没够阈值」的触发判断；要精确就读 API 返回的真实 usage）：
  * - DeepSeek 官方：英文 ~0.3 token/char、中文 ~0.6 token/char
- * - GPT / Claude / Gemini 系 BPE：英文 ~0.27、中文 ~0.6（CJK 多为 1~2 token/字，混合取中值）
+ * - GPT / Claude / Gemini 系 BPE：英文 ~0.27、中文 ~1.5（CJK 多为 1~2 token/字，混合取中值）
  * 常数可用 .usage 的真实 total_tokens 反向校准。加新模型直接扩这张表。
  */
 export interface TokenWeights {
@@ -172,7 +172,7 @@ export interface TokenWeights {
 }
 
 const TW_DEEPSEEK: TokenWeights = { cjk: 0.6, ascii: 0.3,  other: 0.5, perMessage: 3 };
-const TW_BPE:      TokenWeights = { cjk: 0.6, ascii: 0.27, other: 0.5, perMessage: 3 };
+const TW_BPE:      TokenWeights = { cjk: 1.5, ascii: 0.27, other: 0.5, perMessage: 3 };
 
 export const TOKEN_WEIGHTS: Record<string, TokenWeights> = {
   'claude-opus-4-7':   TW_BPE,

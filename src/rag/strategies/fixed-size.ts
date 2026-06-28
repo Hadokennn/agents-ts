@@ -22,7 +22,7 @@ export class FixedSizeStrategy implements ChunkStrategy {
   private readonly charsPerToken: number;
 
   constructor(opts: FixedSizeOptions = {}) {
-    const targetTokens = opts.targetTokens ?? 256;
+    const targetTokens = opts.targetTokens ?? 512;
     this.charsPerToken = opts.charsPerToken ?? 1.6;
     this.windowChars = Math.max(1, Math.round(targetTokens * this.charsPerToken));
     this.params = { targetTokens, charsPerToken: this.charsPerToken };

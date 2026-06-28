@@ -7,7 +7,7 @@ export interface MarkdownSectionOptions {
   includeBreadcrumb?: boolean; // 每个子块前置标题路径，使其脱离上下文也自包含（默认 true）
 }
 
-interface Section {
+export interface Section {
   breadcrumb: string;    // 从根到本节的标题路径，如 "RAG > 分块策略 > 递归段落"
   content: string;       // 本节正文（不含标题行）
   contentOffset: number; // content 在原文中的起始字符下标（近似，仅供诊断）
@@ -31,7 +31,7 @@ export class MarkdownSectionStrategy implements ChunkStrategy {
   private readonly includeBreadcrumb: boolean;
 
   constructor(opts: MarkdownSectionOptions = {}) {
-    const targetTokens = opts.targetTokens ?? 256;
+    const targetTokens = opts.targetTokens ?? 512;
     this.charsPerToken = opts.charsPerToken ?? 1.6;
     this.includeBreadcrumb = opts.includeBreadcrumb ?? true;
     this.para = new RecursiveParagraphStrategy({ targetTokens, charsPerToken: this.charsPerToken });
@@ -62,7 +62,8 @@ export class MarkdownSectionStrategy implements ChunkStrategy {
 }
 
 // 按 ATX 标题切节，维护标题栈得到面包屑路径；跳过 ``` 代码块内的伪标题。
-function splitByHeadings(text: string): Section[] {
+// 导出供 markdown-code-aware 复用：两者切节逻辑完全一致，只在节内处理代码块时分道。
+export function splitByHeadings(text: string): Section[] {
   const sections: Section[] = [];
   const stack: Array<{ level: number; title: string }> = [];
   let buf: string[] = [];

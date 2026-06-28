@@ -22,7 +22,7 @@ export class FixedOverlapStrategy implements ChunkStrategy {
   private readonly charsPerToken: number;
 
   constructor(opts: FixedOverlapOptions = {}) {
-    const targetTokens = opts.targetTokens ?? 256;
+    const targetTokens = opts.targetTokens ?? 512;
     const overlapTokens = opts.overlapTokens ?? 32;
     this.charsPerToken = opts.charsPerToken ?? 1.6;
     this.windowChars = Math.max(1, Math.round(targetTokens * this.charsPerToken));

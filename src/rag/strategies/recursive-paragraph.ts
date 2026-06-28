@@ -18,7 +18,7 @@ export class RecursiveParagraphStrategy implements ChunkStrategy {
   private readonly charsPerToken: number;
 
   constructor(opts: RecursiveParagraphOptions = {}) {
-    const targetTokens = opts.targetTokens ?? 256;   // 生产常用 512 token，大概 1k 个字符
+    const targetTokens = opts.targetTokens ?? 512;   // 生产常用 512 token，大概 1k 个字符
     this.charsPerToken = opts.charsPerToken ?? 1.6;  // cjk 0.6 token/字符；ASCII 0.3 token/字符
     this.targetChars = targetTokens * this.charsPerToken;
     this.params = { targetTokens, charsPerToken: this.charsPerToken };

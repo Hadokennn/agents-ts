@@ -6,6 +6,7 @@ import { RecursiveParagraphStrategy } from '../rag/strategies/recursive-paragrap
 import { FixedSizeStrategy } from '../rag/strategies/fixed-size.js';
 import { FixedOverlapStrategy } from '../rag/strategies/fixed-overlap.js';
 import { MarkdownSectionStrategy } from '../rag/strategies/markdown-section.js';
+import { MarkdownCodeAwareStrategy } from '../rag/strategies/markdown-code-aware.js';
 import { WeightedScoreFusion } from '../rag/fusion/weighted-score.js';
 import { RrfFusion } from '../rag/fusion/rrf.js';
 import { QwenReranker } from '../rag/rerank/qwen-reranker.js';
@@ -17,10 +18,11 @@ const RESULTS_DIR = 'eval-data/results';
 // 切分轴：基线 vs 负向对照 vs 受控变量组（详见 docs/rag-eval-spec.md §4.3）。
 function defaultStrategies() {
   return [
-    new RecursiveParagraphStrategy({ targetTokens: 256 }),
-    new MarkdownSectionStrategy({ targetTokens: 256 }),
-    new FixedSizeStrategy({ targetTokens: 256 }),
-    new FixedOverlapStrategy({ targetTokens: 256, overlapTokens: 32 }),
+    new RecursiveParagraphStrategy({ targetTokens: 512 }),
+    new MarkdownSectionStrategy({ targetTokens: 512 }),
+    new MarkdownCodeAwareStrategy({ targetTokens: 512 }), // 代码块原子化，与 markdown-section 同表对比
+    new FixedSizeStrategy({ targetTokens: 512 }),
+    new FixedOverlapStrategy({ targetTokens: 512, overlapTokens: 32 }),
   ];
 }
 
